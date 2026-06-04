@@ -61,6 +61,17 @@ const ROLES = [
   { key: "user", name: "User", description: "Regular end user" },
 ];
 
+// Workspace/board scoped roles (tier B). Non-system; granted with tenantId=workspaceId.
+const SCOPED_ROLES = [
+  { key: "ws_owner", name: "Workspace Owner", description: "Owns a workspace" },
+  { key: "ws_admin", name: "Workspace Admin", description: "Manages a workspace" },
+  { key: "ws_member", name: "Workspace Member", description: "Member of a workspace" },
+  { key: "ws_guest", name: "Workspace Guest", description: "Limited workspace access" },
+  { key: "board_admin", name: "Board Admin", description: "Manages a board" },
+  { key: "board_member", name: "Board Member", description: "Member of a board" },
+  { key: "observer", name: "Observer", description: "Read-only board access" },
+];
+
 // Permission keys granted to each role (super_admin bypasses, so empty here).
 const ROLE_PERMS = {
   super_admin: [],
@@ -110,6 +121,15 @@ async function main() {
       where: { key: r.key },
       update: { name: r.name, description: r.description, isSystem: true },
       create: { key: r.key, name: r.name, description: r.description, isSystem: true },
+    });
+  }
+
+  // Scoped roles (non-system)
+  for (const r of SCOPED_ROLES) {
+    await prisma.role.upsert({
+      where: { key: r.key },
+      update: { name: r.name, description: r.description, isSystem: false },
+      create: { key: r.key, name: r.name, description: r.description, isSystem: false },
     });
   }
 

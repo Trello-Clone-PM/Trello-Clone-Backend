@@ -6,6 +6,17 @@ import { redisHealthy } from "./config/redis.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { usersRouter } from "./modules/users/users.routes.js";
+import { workspacesRouter } from "./modules/workspaces/workspaces.routes.js";
+import { boardsRouter } from "./modules/boards/boards.routes.js";
+import { listsRouter } from "./modules/lists/lists.routes.js";
+import { cardsRouter } from "./modules/cards/cards.routes.js";
+import { commentsRouter } from "./modules/comments/comments.routes.js";
+import { labelsRouter } from "./modules/labels/labels.routes.js";
+import {
+  checklistsRouter,
+  checklistItemsRouter,
+} from "./modules/checklists/checklists.routes.js";
+import { adminRouter } from "./modules/admin/admin.routes.js";
 
 export function createApp() {
   const app = express();
@@ -30,6 +41,15 @@ export function createApp() {
 
   app.use("/api/auth", authRouter);
   app.use("/api", usersRouter);
+  app.use("/api/workspaces", workspacesRouter);
+  app.use("/api/boards", boardsRouter);
+  app.use("/api/lists", listsRouter);
+  app.use("/api/cards", cardsRouter);
+  app.use("/api/comments", commentsRouter);
+  app.use("/api/labels", labelsRouter);
+  app.use("/api/checklists", checklistsRouter);
+  app.use("/api/checklist-items", checklistItemsRouter);
+  app.use("/api/admin", adminRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
