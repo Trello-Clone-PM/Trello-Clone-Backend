@@ -17,6 +17,8 @@ import {
   checklistItemsRouter,
 } from "./modules/checklists/checklists.routes.js";
 import { adminRouter } from "./modules/admin/admin.routes.js";
+import { meRouter } from "./modules/me/me.routes.js";
+import { notificationsRouter } from "./modules/notifications/notifications.routes.js";
 
 export function createApp() {
   const app = express();
@@ -41,6 +43,8 @@ export function createApp() {
 
   app.use("/api/auth", authRouter);
   app.use("/api", usersRouter);
+  app.use("/api/me", meRouter);
+  app.use("/api/notifications", notificationsRouter);
   app.use("/api/workspaces", workspacesRouter);
   app.use("/api/boards", boardsRouter);
   app.use("/api/lists", listsRouter);

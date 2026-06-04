@@ -20,4 +20,7 @@ cardsRouter.post("/:id/comments", ah(c.createComment));
 cardsRouter.post("/:id/labels", ah(c.attachLabel));
 cardsRouter.delete("/:id/labels/:labelId", ah(c.detachLabel));
 
+cardsRouter.post("/:id/members", ah(c.addMember));
+cardsRouter.delete("/:id/members/:userId", ah(c.removeMember));
+
 cardsRouter.post("/:id/checklists", ah(c.createChecklist));

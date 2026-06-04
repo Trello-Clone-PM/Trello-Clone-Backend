@@ -1,9 +1,14 @@
 import * as service from "./checklists.service.js";
-import { createItemSchema, updateItemSchema } from "./checklists.schema.js";
+import { createItemSchema, updateItemSchema, updateChecklistSchema } from "./checklists.schema.js";
 
 export const createItem = async (req, res) => {
   const input = createItemSchema.parse(req.body);
   res.status(201).json(await service.createItem(req.user.id, req.params.id, input));
+};
+
+export const updateChecklist = async (req, res) => {
+  const input = updateChecklistSchema.parse(req.body);
+  res.json(await service.updateChecklist(req.user.id, req.params.id, input));
 };
 
 export const removeChecklist = async (req, res) => {

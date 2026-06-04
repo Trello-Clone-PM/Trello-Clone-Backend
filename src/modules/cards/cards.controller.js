@@ -58,6 +58,19 @@ export const detachLabel = async (req, res) => {
   res.status(204).end();
 };
 
+// --- nested: members ---
+const addMemberSchema = z.object({ userId: z.string().uuid() });
+
+export const addMember = async (req, res) => {
+  const input = addMemberSchema.parse(req.body);
+  res.status(201).json(await cards.addCardMember(req.user.id, req.params.id, input));
+};
+
+export const removeMember = async (req, res) => {
+  await cards.removeCardMember(req.user.id, req.params.id, req.params.userId);
+  res.status(204).end();
+};
+
 // --- nested: checklists ---
 export const createChecklist = async (req, res) => {
   const input = createChecklistSchema.parse(req.body);

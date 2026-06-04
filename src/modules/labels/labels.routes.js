@@ -7,4 +7,5 @@ export const labelsRouter = Router();
 
 labelsRouter.use(authenticate);
 
+labelsRouter.patch("/:id", ah(c.update));
 labelsRouter.delete("/:id", ah(c.remove));

@@ -24,6 +24,7 @@ usersRouter.get(
           name: true,
           avatarUrl: true,
           isActive: true,
+          settings: true,
           createdAt: true,
         },
       }),

@@ -3,6 +3,7 @@ import { NotFound, Forbidden } from "../../lib/errors.js";
 import { assertCardAccess } from "../cards/cards.service.js";
 import { assertWorkspaceAccess } from "../workspaces/workspaces.service.js";
 import { emitToBoard } from "../../realtime/index.js";
+import { notify } from "../notifications/notifications.service.js";
 
 const COMMENT_SELECT = {
   id: true,
@@ -29,6 +30,21 @@ export async function createComment(userId, cardId, input) {
     select: COMMENT_SELECT,
   });
   emitToBoard(card.boardId, "comment:created", comment);
+
+  // Notify card members (except the author), best-effort.
+  const members = await prisma.cardMember.findMany({
+    where: { cardId, userId: { not: userId } },
+    select: { userId: true },
+  });
+  for (const m of members) {
+    notify(m.userId, "comment", {
+      cardId,
+      boardId: card.boardId,
+      commentId: comment.id,
+      authorId: userId,
+      body: input.body.slice(0, 280),
+    });
+  }
   return comment;
 }
 

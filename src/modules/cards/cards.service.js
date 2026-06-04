@@ -3,6 +3,7 @@ import { NotFound, BadRequest } from "../../lib/errors.js";
 import { assertWorkspaceAccess } from "../workspaces/workspaces.service.js";
 import { endPosition } from "../../lib/position.js";
 import { emitToBoard } from "../../realtime/index.js";
+import { notify } from "../notifications/notifications.service.js";
 
 const CARD_SELECT = {
   id: true,
@@ -195,4 +196,38 @@ export async function deleteCard(userId, cardId) {
   const { card } = await assertCardAccess(userId, cardId, "ws_member");
   await prisma.card.delete({ where: { id: cardId } });
   emitToBoard(card.boardId, "card:deleted", { id: cardId, listId: card.listId });
+}
+
+export async function addCardMember(userId, cardId, input) {
+  const { card } = await assertCardAccess(userId, cardId, "ws_member");
+  const target = await prisma.user.findUnique({
+    where: { id: input.userId },
+    select: { id: true, name: true, email: true, avatarUrl: true },
+  });
+  if (!target) throw NotFound("User not found", "USER_NOT_FOUND");
+  // Target must have workspace access to be assignable.
+  await assertWorkspaceAccess(target.id, card.workspaceId);
+
+  const existing = await prisma.cardMember.findUnique({
+    where: { cardId_userId: { cardId, userId: target.id } },
+  });
+  if (!existing) {
+    await prisma.cardMember.create({ data: { cardId, userId: target.id } });
+    if (target.id !== userId) {
+      notify(target.id, "assigned", {
+        cardId,
+        boardId: card.boardId,
+        title: card.title,
+        assignedBy: userId,
+      });
+    }
+  }
+  emitToBoard(card.boardId, "card:member_added", { cardId, user: target });
+  return { cardId, user: target };
+}
+
+export async function removeCardMember(userId, cardId, memberId) {
+  const { card } = await assertCardAccess(userId, cardId, "ws_member");
+  await prisma.cardMember.deleteMany({ where: { cardId, userId: memberId } });
+  emitToBoard(card.boardId, "card:member_removed", { cardId, userId: memberId });
 }

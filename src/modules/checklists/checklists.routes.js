@@ -7,6 +7,7 @@ import * as c from "./checklists.controller.js";
 export const checklistsRouter = Router();
 checklistsRouter.use(authenticate);
 checklistsRouter.post("/:id/items", ah(c.createItem));
+checklistsRouter.patch("/:id", ah(c.updateChecklist));
 checklistsRouter.delete("/:id", ah(c.removeChecklist));
 
 // Mounted at /api/checklist-items

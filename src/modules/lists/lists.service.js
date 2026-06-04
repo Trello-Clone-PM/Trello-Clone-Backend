@@ -21,6 +21,12 @@ export async function listLists(userId, boardId) {
   });
 }
 
+export async function getList(userId, listId) {
+  const list = await loadList(listId);
+  await assertBoardAccess(userId, list.boardId);
+  return list;
+}
+
 export async function createList(userId, input) {
   await assertBoardAccess(userId, input.boardId, "ws_member");
   let position = input.position;

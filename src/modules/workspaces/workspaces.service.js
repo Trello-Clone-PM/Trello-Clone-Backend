@@ -1,6 +1,7 @@
 import { prisma } from "../../config/db.js";
 import { Forbidden, NotFound, BadRequest } from "../../lib/errors.js";
 import { invalidateUserPerms } from "../rbac/perms.js";
+import { notify } from "../notifications/notifications.service.js";
 
 // Workspace-scoped role hierarchy. Higher index = more privileged.
 const WS_ROLE_RANK = {
@@ -211,6 +212,13 @@ export async function addMember(userId, workspaceId, input) {
       data: { userId: target.id, roleId, tenantId: workspaceId, grantedBy: userId },
     });
     await invalidateUserPerms(target.id);
+    if (target.id !== userId) {
+      notify(target.id, "invite", {
+        workspaceId,
+        role: input.role,
+        invitedBy: userId,
+      });
+    }
   }
   return { userId: target.id, email: target.email, name: target.name, role: input.role };
 }

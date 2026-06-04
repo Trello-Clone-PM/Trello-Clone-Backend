@@ -32,6 +32,16 @@ async function loadChecklistScope(checklistId) {
   return cl;
 }
 
+export async function updateChecklist(userId, checklistId, input) {
+  const cl = await loadChecklistScope(checklistId);
+  await assertWorkspaceAccess(userId, cl.card.list.board.workspaceId, "ws_member");
+  return prisma.checklist.update({
+    where: { id: checklistId },
+    data: input,
+    select: CHECKLIST_SELECT,
+  });
+}
+
 export async function deleteChecklist(userId, checklistId) {
   const cl = await loadChecklistScope(checklistId);
   await assertWorkspaceAccess(userId, cl.card.list.board.workspaceId, "ws_member");

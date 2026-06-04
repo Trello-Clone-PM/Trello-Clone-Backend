@@ -31,6 +31,9 @@ export function initRealtime(httpServer) {
   });
 
   io.on("connection", (socket) => {
+    const userId = socket.data.userId;
+    if (userId) socket.join(`user:${userId}`);
+
     socket.on("board:join", (payload) => {
       const boardId = typeof payload === "string" ? payload : payload?.boardId;
       if (boardId) socket.join(`board:${boardId}`);
@@ -48,4 +51,10 @@ export function initRealtime(httpServer) {
 export function emitToBoard(boardId, event, payload) {
   if (!io || !boardId) return;
   io.to(`board:${boardId}`).emit(event, payload);
+}
+
+// Emit to a single user's room (joined as user:<id> on connect).
+export function emitToUser(userId, event, payload) {
+  if (!io || !userId) return;
+  io.to(`user:${userId}`).emit(event, payload);
 }

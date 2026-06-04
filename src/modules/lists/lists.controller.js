@@ -13,6 +13,10 @@ export const create = async (req, res) => {
   res.status(201).json(await service.createList(req.user.id, input));
 };
 
+export const get = async (req, res) => {
+  res.json(await service.getList(req.user.id, req.params.id));
+};
+
 export const update = async (req, res) => {
   const input = updateListSchema.parse(req.body);
   res.json(await service.updateList(req.user.id, req.params.id, input));

@@ -4,6 +4,10 @@ export const createChecklistSchema = z.object({
   title: z.string().min(1).max(512),
 });
 
+export const updateChecklistSchema = z.object({
+  title: z.string().min(1).max(512),
+});
+
 export const createItemSchema = z.object({
   text: z.string().min(1).max(2048),
 });

@@ -19,6 +19,20 @@ export async function createLabel(userId, boardId, input) {
   });
 }
 
+export async function updateLabel(userId, labelId, input) {
+  const label = await prisma.label.findUnique({
+    where: { id: labelId },
+    select: { boardId: true },
+  });
+  if (!label) throw NotFound("Label not found");
+  await assertBoardAccess(userId, label.boardId, "ws_member");
+  return prisma.label.update({
+    where: { id: labelId },
+    data: input,
+    select: { id: true, boardId: true, name: true, color: true },
+  });
+}
+
 export async function deleteLabel(userId, labelId) {
   const label = await prisma.label.findUnique({
     where: { id: labelId },

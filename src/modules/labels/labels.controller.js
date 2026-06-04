@@ -15,6 +15,18 @@ export const createForBoard = async (req, res) => {
   res.status(201).json(await service.createLabel(req.user.id, req.params.id, input));
 };
 
+const updateLabelSchema = z
+  .object({
+    name: z.string().max(160).nullable().optional(),
+    color: z.string().min(1).max(64).optional(),
+  })
+  .refine((d) => Object.keys(d).length > 0, { message: "No fields to update" });
+
+export const update = async (req, res) => {
+  const input = updateLabelSchema.parse(req.body);
+  res.json(await service.updateLabel(req.user.id, req.params.id, input));
+};
+
 export const remove = async (req, res) => {
   await service.deleteLabel(req.user.id, req.params.id);
   res.status(204).end();
