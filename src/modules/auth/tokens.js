@@ -16,7 +16,7 @@ export const REFRESH_COOKIE_PATH = "/api/auth";
 export function refreshCookieOptions(maxAgeMs) {
   return {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
+    secure: env.COOKIE_SECURE,
     sameSite: "strict",
     path: REFRESH_COOKIE_PATH,
     maxAge: maxAgeMs,

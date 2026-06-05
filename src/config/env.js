@@ -6,6 +6,9 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
   JWT_SECRET: z.string().min(1),
+  // Set true only when served over HTTPS (e.g. behind TLS/Cloudflare). Over plain
+  // HTTP (IP access) keep false or the refresh cookie won't be sent.
+  COOKIE_SECURE: z.coerce.boolean().default(false),
   ACCESS_TOKEN_TTL: z.string().default("15m"),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().default(7),
   MINIO_ENDPOINT: z.string().default("minio"),
