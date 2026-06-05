@@ -22,6 +22,7 @@ import { notificationsRouter } from "./modules/notifications/notifications.route
 import { attachmentsRouter } from "./modules/attachments/attachments.routes.js";
 import { searchRouter } from "./modules/search/search.routes.js";
 import { customFieldsRouter } from "./modules/customFields/customFields.routes.js";
+import { landingPublicRouter } from "./modules/landing/landing.public.routes.js";
 
 export function createApp() {
   const app = express();
@@ -44,6 +45,7 @@ export function createApp() {
       .json({ status: ok ? "ok" : "degraded", db, redis });
   });
 
+  app.use("/api/landing", landingPublicRouter);
   app.use("/api/auth", authRouter);
   app.use("/api", usersRouter);
   app.use("/api/me", meRouter);

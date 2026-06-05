@@ -32,3 +32,6 @@ adminRouter.get("/health", authorize("system.view_audit_log"), ah(c.health));
 adminRouter.get("/config", authorize("system.manage_settings"), ah(c.getConfig));
 adminRouter.patch("/config", authorize("system.manage_settings"), ah(c.updateConfig));
 adminRouter.get("/audit", authorize("system.view_audit_log"), ah(c.listAudit));
+adminRouter.get("/landing", authorize("system.manage_settings"), ah(c.getLandingContent));
+adminRouter.patch("/landing", authorize("system.manage_settings"), ah(c.updateLandingContent));
+adminRouter.post("/landing/image", authorize("system.manage_settings"), ah(c.landingImageUpload));

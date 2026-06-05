@@ -1,5 +1,11 @@
 import * as service from "./admin.service.js";
 import {
+  getLanding,
+  saveLanding,
+  createLandingImageUpload,
+} from "../landing/landing.service.js";
+import { logAudit } from "../rbac/audit.js";
+import {
   paginationSchema,
   suspendSchema,
   assignRoleSchema,
@@ -11,6 +17,8 @@ import {
   idParamSchema,
   rolePermissionsSchema,
   configPatchSchema,
+  landingPatchSchema,
+  landingImageSchema,
 } from "./admin.schema.js";
 
 const ctxOf = (req) => ({ ip: req.ip, userAgent: req.headers["user-agent"] });
@@ -124,4 +132,28 @@ export const updateConfig = async (req, res) => {
 
 export const storageCleanup = async (req, res) => {
   res.json(await service.cleanupStorage(req.user.id, ctxOf(req)));
+};
+
+export const getLandingContent = async (_req, res) => {
+  res.json(await getLanding());
+};
+
+export const updateLandingContent = async (req, res) => {
+  const { content } = landingPatchSchema.parse(req.body);
+  const saved = await saveLanding(content);
+  const ctx = ctxOf(req);
+  logAudit({
+    actorId: req.user.id,
+    targetId: null,
+    action: "landing.updated",
+    metadata: { keys: Object.keys(content ?? {}) },
+    ipAddress: ctx.ip,
+    userAgent: ctx.userAgent,
+  });
+  res.json(saved);
+};
+
+export const landingImageUpload = async (req, res) => {
+  const input = landingImageSchema.parse(req.body);
+  res.json(await createLandingImageUpload(input));
 };

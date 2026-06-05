@@ -53,6 +53,15 @@ export const configPatchSchema = z
   })
   .refine((d) => Object.keys(d).length > 0, { message: "Empty patch" });
 
+export const landingPatchSchema = z.object({
+  content: z.record(z.any()),
+});
+
+export const landingImageSchema = z.object({
+  filename: z.string().min(1).max(255),
+  contentType: z.string().min(1).max(255),
+});
+
 export const auditQuerySchema = z.object({
   actor: z.string().uuid().optional(),
   action: z.string().optional(),
