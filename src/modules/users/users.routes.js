@@ -35,3 +35,26 @@ usersRouter.get(
     res.json({ user, roles: authUser.roles, permissions });
   }),
 );
+
+// GET /api/users/search?q= — autocomplete users by name/email (authenticated).
+usersRouter.get(
+  "/users/search",
+  authenticate,
+  ah(async (req, res) => {
+    const q = String(req.query.q || "").trim();
+    if (q.length < 1) return res.json([]);
+    const users = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { email: { contains: q, mode: "insensitive" } },
+          { name: { contains: q, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, name: true, email: true, avatarUrl: true },
+      take: 8,
+      orderBy: { email: "asc" },
+    });
+    res.json(users);
+  }),
+);
