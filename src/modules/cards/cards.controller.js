@@ -2,9 +2,12 @@ import * as cards from "./cards.service.js";
 import * as comments from "../comments/comments.service.js";
 import * as labels from "../labels/labels.service.js";
 import * as checklists from "../checklists/checklists.service.js";
+import * as attachments from "../attachments/attachments.service.js";
+import * as activity from "../activity/activity.service.js";
 import { createCardSchema, updateCardSchema, moveCardSchema } from "./cards.schema.js";
 import { createCommentSchema } from "../comments/comments.schema.js";
 import { createChecklistSchema } from "../checklists/checklists.schema.js";
+import { presignSchema, createAttachmentSchema } from "../attachments/attachments.schema.js";
 import { z } from "zod";
 
 export const list = async (req, res) => {
@@ -75,4 +78,24 @@ export const removeMember = async (req, res) => {
 export const createChecklist = async (req, res) => {
   const input = createChecklistSchema.parse(req.body);
   res.status(201).json(await checklists.createChecklist(req.user.id, req.params.id, input));
+};
+
+// --- nested: attachments ---
+export const presignAttachment = async (req, res) => {
+  const input = presignSchema.parse(req.body);
+  res.json(await attachments.presignUpload(req.user.id, req.params.id, input));
+};
+
+export const createAttachment = async (req, res) => {
+  const input = createAttachmentSchema.parse(req.body);
+  res.status(201).json(await attachments.createAttachment(req.user.id, req.params.id, input));
+};
+
+export const listAttachments = async (req, res) => {
+  res.json(await attachments.listAttachments(req.user.id, req.params.id));
+};
+
+// --- nested: activity ---
+export const listActivity = async (req, res) => {
+  res.json(await activity.listCardActivity(req.user.id, req.params.id));
 };

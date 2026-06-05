@@ -162,6 +162,15 @@ export async function updateCard(userId, cardId, input) {
     data,
     select: CARD_SELECT,
   });
+  await prisma.activity.create({
+    data: {
+      boardId: card.boardId,
+      cardId,
+      actorId: userId,
+      action: "card.updated",
+      metadata: { fields: Object.keys(input) },
+    },
+  });
   emitToBoard(card.boardId, "card:updated", updated);
   return updated;
 }

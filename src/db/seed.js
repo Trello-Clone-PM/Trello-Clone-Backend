@@ -14,6 +14,8 @@ const PERMISSIONS = [
   { key: "users.delete", description: "Delete a user" },
   { key: "users.invite", description: "Invite a user" },
   { key: "users.suspend", description: "Suspend a user" },
+  { key: "users.reset_password", description: "Reset a user's password" },
+  { key: "users.impersonate", description: "Impersonate a user" },
   // Roles / permissions
   { key: "roles.list", description: "List roles" },
   { key: "roles.create", description: "Create a role" },
@@ -27,6 +29,7 @@ const PERMISSIONS = [
   { key: "workspaces.create", description: "Create a workspace" },
   { key: "workspaces.update", description: "Update a workspace" },
   { key: "workspaces.delete", description: "Delete a workspace" },
+  { key: "workspaces.lock", description: "Lock or unlock a workspace" },
   // Boards
   { key: "boards.list", description: "List boards" },
   { key: "boards.read", description: "View a board" },
@@ -52,6 +55,7 @@ const PERMISSIONS = [
   { key: "system.view_audit_log", description: "View the audit log" },
   { key: "system.manage_settings", description: "Manage system settings" },
   { key: "system.impersonate", description: "Log in as another user" },
+  { key: "storage.view", description: "View storage usage" },
 ];
 
 const ROLES = [
@@ -76,16 +80,16 @@ const SCOPED_ROLES = [
 const ROLE_PERMS = {
   super_admin: [],
   admin: [
-    "users.list", "users.read", "users.create", "users.update", "users.delete",
-    "users.invite", "users.suspend",
+    "users.list", "users.read", "users.create", "users.update",
+    "users.invite", "users.suspend", "users.reset_password",
     "roles.list", "roles.assign", "permissions.list",
-    "workspaces.list", "workspaces.read", "workspaces.create", "workspaces.update", "workspaces.delete",
+    "workspaces.list", "workspaces.read", "workspaces.create", "workspaces.update", "workspaces.delete", "workspaces.lock",
     "boards.list", "boards.read", "boards.create", "boards.update", "boards.delete",
     "lists.create", "lists.update", "lists.delete",
     "cards.create", "cards.read", "cards.update", "cards.delete",
     "comments.create", "comments.update", "comments.delete",
     "attachments.create", "attachments.delete",
-    "system.view_audit_log", "system.manage_settings",
+    "system.view_audit_log", "system.manage_settings", "storage.view",
   ],
   support: [
     "users.list", "users.read",

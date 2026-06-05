@@ -24,3 +24,9 @@ cardsRouter.post("/:id/members", ah(c.addMember));
 cardsRouter.delete("/:id/members/:userId", ah(c.removeMember));
 
 cardsRouter.post("/:id/checklists", ah(c.createChecklist));
+
+cardsRouter.get("/:id/attachments", ah(c.listAttachments));
+cardsRouter.post("/:id/attachments/presign", ah(c.presignAttachment));
+cardsRouter.post("/:id/attachments", ah(c.createAttachment));
+
+cardsRouter.get("/:id/activity", ah(c.listActivity));

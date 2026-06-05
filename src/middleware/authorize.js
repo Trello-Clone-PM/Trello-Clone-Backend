@@ -7,10 +7,13 @@ const SUPER_ADMIN = "super_admin";
 // Permissions whose ALLOW should be audited (RBAC.md 12: sensitive only).
 const SENSITIVE = new Set([
   "system.impersonate",
+  "users.impersonate",
   "billing.refund",
   "users.delete",
   "users.suspend",
+  "users.reset_password",
   "roles.assign",
+  "workspaces.lock",
 ]);
 
 export function authorize(requiredPermission) {

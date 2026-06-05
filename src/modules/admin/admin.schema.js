@@ -16,6 +16,27 @@ export const assignRoleSchema = z.object({
   tenantId: z.string().uuid().nullable().optional(),
 });
 
+export const resetPasswordSchema = z.object({
+  newPassword: z.string().min(8).max(128).optional(),
+});
+
+export const updateWorkspaceSchema = z
+  .object({
+    name: z.string().min(1).max(120).optional(),
+    visibility: z.enum(["private", "workspace", "public"]).optional(),
+  })
+  .refine((d) => d.name !== undefined || d.visibility !== undefined, {
+    message: "Provide name or visibility",
+  });
+
+export const transferOwnerSchema = z.object({
+  newOwnerId: z.string().uuid(),
+});
+
+export const lockSchema = z.object({
+  locked: z.boolean(),
+});
+
 export const auditQuerySchema = z.object({
   actor: z.string().uuid().optional(),
   action: z.string().optional(),

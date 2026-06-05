@@ -29,6 +29,9 @@ export async function createComment(userId, cardId, input) {
     data: { cardId, authorId: userId, body: input.body },
     select: COMMENT_SELECT,
   });
+  await prisma.activity.create({
+    data: { boardId: card.boardId, cardId, actorId: userId, action: "comment.created" },
+  });
   emitToBoard(card.boardId, "comment:created", comment);
 
   // Notify card members (except the author), best-effort.
