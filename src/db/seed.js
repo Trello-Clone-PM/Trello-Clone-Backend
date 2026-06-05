@@ -155,7 +155,11 @@ async function main() {
     });
   }
 
-  // Seed super_admin user
+  // Seed super_admin user (skipped on Prod so the first-run setup page is used).
+  if (!env.SEED_SUPER_ADMIN) {
+    console.log("Seed complete. SEED_SUPER_ADMIN=false -> use first-run setup page to create super_admin.");
+    return;
+  }
   const superRole = await prisma.role.findUniqueOrThrow({ where: { key: "super_admin" } });
   const passwordHash = await bcrypt.hash(env.SEED_ADMIN_PASSWORD, 10);
   const admin = await prisma.user.upsert({

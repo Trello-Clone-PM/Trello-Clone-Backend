@@ -17,6 +17,9 @@ const schema = z.object({
   MINIO_PUBLIC_URL: z.string().default("http://localhost:9000"),
   SEED_ADMIN_EMAIL: z.string().email().default("admin@trello.local"),
   SEED_ADMIN_PASSWORD: z.string().default("Admin@12345"),
+  // When false (e.g. Prod), the seed does NOT create a super_admin user, so the
+  // one-time first-run setup page is shown to create it.
+  SEED_SUPER_ADMIN: z.coerce.boolean().default(true),
   APP_URL: z.string().default("http://localhost:5173"),
   SMTP_HOST: z.string().default(""),
   SMTP_PORT: z.coerce.number().default(587),

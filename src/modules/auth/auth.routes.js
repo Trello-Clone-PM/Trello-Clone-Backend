@@ -5,6 +5,8 @@ import * as c from "./auth.controller.js";
 
 export const authRouter = Router();
 
+authRouter.get("/setup-status", ah(c.setupStatusHandler));
+authRouter.post("/setup", ah(c.setupHandler));
 authRouter.post("/register", ah(c.registerHandler));
 authRouter.post("/login", ah(c.loginHandler));
 authRouter.post("/renew", ah(c.renewHandler));

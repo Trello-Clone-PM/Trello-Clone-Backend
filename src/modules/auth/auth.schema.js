@@ -13,6 +13,12 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+export const setupSchema = z.object({
+  email: z.string().email(),
+  password,
+  name: z.string().min(1).max(120),
+});
+
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
   newPassword: password,

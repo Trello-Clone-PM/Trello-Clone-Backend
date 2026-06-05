@@ -66,6 +66,38 @@ export async function register(email, plainPassword, name) {
   return { userId: user.id, tokens };
 }
 
+// First-run setup: true when no super_admin user exists yet.
+export async function getSetupStatus() {
+  const superRole = await prisma.role.findUnique({ where: { key: "super_admin" } });
+  if (!superRole) return { needsSetup: true };
+  const count = await prisma.userRole.count({ where: { roleId: superRole.id, tenantId: null } });
+  return { needsSetup: count === 0 };
+}
+
+// Create the very first super_admin. Only allowed while no super_admin exists.
+export async function setupSuperAdmin(email, plainPassword, name, ip) {
+  const superRole = await prisma.role.findUnique({ where: { key: "super_admin" } });
+  if (!superRole) throw BadRequest("Roles are not seeded yet", "ROLES_MISSING");
+  const existing = await prisma.userRole.count({ where: { roleId: superRole.id, tenantId: null } });
+  if (existing > 0) throw Conflict("Setup already completed", "SETUP_DONE");
+
+  const taken = await prisma.user.findUnique({ where: { email } });
+  if (taken) throw Conflict("Email already registered", "EMAIL_TAKEN");
+
+  const passwordHash = await bcrypt.hash(plainPassword, BCRYPT_ROUNDS);
+  const userRole = await prisma.role.findUnique({ where: { key: "user" } });
+  const roleLinks = [{ roleId: superRole.id, tenantId: null }];
+  if (userRole) roleLinks.push({ roleId: userRole.id, tenantId: null });
+
+  const user = await prisma.user.create({
+    data: { email, passwordHash, name, isActive: true, userRoles: { create: roleLinks } },
+    select: { id: true, tokenVersion: true },
+  });
+  logAudit({ actorId: user.id, action: "auth.setup.super_admin", metadata: { email }, ipAddress: ip });
+  const tokens = await issueTokens(user.id, user.tokenVersion);
+  return { userId: user.id, tokens };
+}
+
 export async function login(email, plainPassword, ip) {
   const user = await prisma.user.findUnique({ where: { email } });
   const ok = user && (await bcrypt.compare(plainPassword, user.passwordHash));

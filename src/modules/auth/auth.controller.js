@@ -1,6 +1,6 @@
 import {
   registerSchema, loginSchema, changePasswordSchema,
-  forgotPasswordSchema, resetPasswordSchema,
+  forgotPasswordSchema, resetPasswordSchema, setupSchema,
 } from "./auth.schema.js";
 import * as service from "./auth.service.js";
 import { REFRESH_COOKIE_NAME, refreshCookieOptions } from "./tokens.js";
@@ -26,6 +26,17 @@ export const loginHandler = async (req, res) => {
   const { tokens } = await service.login(input.email, input.password, req.ip);
   setRefreshCookie(res, tokens.refreshToken, tokens.refreshMaxAgeMs);
   res.json({ accessToken: tokens.accessToken });
+};
+
+export const setupStatusHandler = async (_req, res) => {
+  res.json(await service.getSetupStatus());
+};
+
+export const setupHandler = async (req, res) => {
+  const input = setupSchema.parse(req.body);
+  const { tokens } = await service.setupSuperAdmin(input.email, input.password, input.name, req.ip);
+  setRefreshCookie(res, tokens.refreshToken, tokens.refreshMaxAgeMs);
+  res.status(201).json({ accessToken: tokens.accessToken });
 };
 
 export const renewHandler = async (req, res) => {
