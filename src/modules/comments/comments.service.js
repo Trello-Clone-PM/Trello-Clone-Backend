@@ -34,19 +34,33 @@ export async function createComment(userId, cardId, input) {
   });
   emitToBoard(card.boardId, "comment:created", comment);
 
-  // Notify card members (except the author), best-effort.
+  const base = {
+    cardId,
+    boardId: card.boardId,
+    commentId: comment.id,
+    authorId: userId,
+    body: input.body.slice(0, 280),
+  };
+
+  // Mentioned users must have workspace access; notify them with "mention".
+  const mentioned = new Set();
+  for (const mid of input.mentions ?? []) {
+    if (mid === userId || mentioned.has(mid)) continue;
+    const ok = await assertWorkspaceAccess(mid, card.workspaceId).then(() => true).catch(() => false);
+    if (ok) {
+      mentioned.add(mid);
+      notify(mid, "mention", base);
+    }
+  }
+
+  // Notify card members (except the author and anyone already mentioned).
   const members = await prisma.cardMember.findMany({
     where: { cardId, userId: { not: userId } },
     select: { userId: true },
   });
   for (const m of members) {
-    notify(m.userId, "comment", {
-      cardId,
-      boardId: card.boardId,
-      commentId: comment.id,
-      authorId: userId,
-      body: input.body.slice(0, 280),
-    });
+    if (mentioned.has(m.userId)) continue;
+    notify(m.userId, "comment", base);
   }
   return comment;
 }

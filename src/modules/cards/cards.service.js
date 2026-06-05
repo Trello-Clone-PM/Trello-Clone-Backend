@@ -117,6 +117,7 @@ export async function getCardDetail(userId, cardId) {
       cardLabels: { select: { label: { select: { id: true, name: true, color: true } } } },
       members: { select: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } } },
       watchers: { where: { userId }, select: { userId: true } },
+      fieldValues: { select: { fieldId: true, value: true } },
       comments: {
         orderBy: { createdAt: "asc" },
         select: {
@@ -144,12 +145,13 @@ export async function getCardDetail(userId, cardId) {
     },
   });
 
-  const { cardLabels, members, watchers, ...rest } = card;
+  const { cardLabels, members, watchers, fieldValues, ...rest } = card;
   return {
     ...rest,
     labels: cardLabels.map((cl) => cl.label),
     members: members.map((m) => m.user),
     watching: watchers.length > 0,
+    fieldValues,
   };
 }
 

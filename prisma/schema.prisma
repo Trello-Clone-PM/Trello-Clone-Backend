@@ -34,6 +34,7 @@ model User {
   notifications Notification[]
   boardStars    BoardStar[]
   cardWatchers  CardWatcher[]
+  boardMembers  BoardMember[]
 
   @@map("users")
 }
@@ -168,9 +169,31 @@ model Board {
   labels     Label[]
   activities Activity[]
   stars      BoardStar[]
+  members    BoardMember[]
+  customFields CustomField[]
 
   @@index([workspaceId])
   @@map("boards")
+}
+
+enum BoardRole {
+  admin
+  member
+  observer
+}
+
+model BoardMember {
+  boardId   String    @map("board_id") @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  role      BoardRole @default(member)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([boardId, userId])
+  @@index([userId])
+  @@map("board_members")
 }
 
 model BoardStar {
@@ -223,9 +246,46 @@ model Card {
   attachments Attachment[]
   activities  Activity[]
   watchers    CardWatcher[]
+  fieldValues CustomFieldValue[]
 
   @@index([listId])
   @@map("cards")
+}
+
+enum CustomFieldType {
+  text
+  number
+  date
+  checkbox
+  dropdown
+}
+
+model CustomField {
+  id       String          @id @default(uuid()) @db.Uuid
+  boardId  String          @map("board_id") @db.Uuid
+  name     String
+  type     CustomFieldType @default(text)
+  options  Json? // for dropdown: array of strings
+  position Float           @default(0)
+
+  board  Board              @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  values CustomFieldValue[]
+
+  @@index([boardId])
+  @@map("custom_fields")
+}
+
+model CustomFieldValue {
+  fieldId String @map("field_id") @db.Uuid
+  cardId  String @map("card_id") @db.Uuid
+  value   Json?
+
+  field CustomField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  card  Card        @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@id([fieldId, cardId])
+  @@index([cardId])
+  @@map("custom_field_values")
 }
 
 model CardWatcher {

@@ -8,6 +8,8 @@ export const authRouter = Router();
 authRouter.post("/register", ah(c.registerHandler));
 authRouter.post("/login", ah(c.loginHandler));
 authRouter.post("/renew", ah(c.renewHandler));
+authRouter.post("/forgot-password", ah(c.forgotPasswordHandler));
+authRouter.post("/reset-password", ah(c.resetPasswordHandler));
 authRouter.post("/logout", authenticate, ah(c.logoutHandler));
 authRouter.post("/logout-all", authenticate, ah(c.logoutAllHandler));
 authRouter.post("/change-password", authenticate, ah(c.changePasswordHandler));

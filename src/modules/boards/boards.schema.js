@@ -21,3 +21,10 @@ export const updateBoardSchema = z
   .refine((v) => Object.keys(v).length > 0, { message: "No fields to update" });
 
 export const starBoardSchema = z.object({ starred: z.boolean() });
+
+const boardRole = z.enum(["admin", "member", "observer"]);
+export const addBoardMemberSchema = z.object({
+  userId: z.string().uuid(),
+  role: boardRole.optional(),
+});
+export const updateBoardMemberSchema = z.object({ role: boardRole });

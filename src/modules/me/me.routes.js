@@ -14,3 +14,4 @@ meRouter.post("/avatar", ah(c.avatarUpload));
 meRouter.post("/change-password", ah(c.changePassword));
 meRouter.get("/settings", ah(c.getSettings));
 meRouter.patch("/settings", ah(c.updateSettings));
+meRouter.get("/dashboard", ah(c.dashboard));

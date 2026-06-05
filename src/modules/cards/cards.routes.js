@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authenticate } from "../../middleware/authenticate.js";
 import { ah } from "../../middleware/errorHandler.js";
 import * as c from "./cards.controller.js";
+import * as fields from "../customFields/customFields.controller.js";
 
 export const cardsRouter = Router();
 
@@ -32,3 +33,6 @@ cardsRouter.post("/:id/attachments/presign", ah(c.presignAttachment));
 cardsRouter.post("/:id/attachments", ah(c.createAttachment));
 
 cardsRouter.get("/:id/activity", ah(c.listActivity));
+
+cardsRouter.get("/:id/fields", ah(fields.listCardValues));
+cardsRouter.put("/:id/fields/:fieldId", ah(fields.setCardValue));

@@ -13,8 +13,18 @@ const schema = z.object({
   MINIO_ACCESS_KEY: z.string().default("minioadmin"),
   MINIO_SECRET_KEY: z.string().default("minioadmin"),
   MINIO_BUCKET: z.string().default("trello"),
+  // Browser-reachable MinIO base URL (presign host + public file URLs). e.g. http://<vps-ip>:9000
+  MINIO_PUBLIC_URL: z.string().default("http://localhost:9000"),
   SEED_ADMIN_EMAIL: z.string().email().default("admin@trello.local"),
   SEED_ADMIN_PASSWORD: z.string().default("Admin@12345"),
+  APP_URL: z.string().default("http://localhost:5173"),
+  SMTP_HOST: z.string().default(""),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_USER: z.string().default(""),
+  SMTP_PASS: z.string().default(""),
+  SMTP_FROM: z.string().default("Trello Clone <no-reply@trello.local>"),
+  ENABLE_WORKERS: z.coerce.boolean().default(true),
 });
 
 const parsed = schema.safeParse(process.env);

@@ -8,9 +8,11 @@ import { signAccessToken } from "./tokens.js";
 import { BadRequest, Conflict, Unauthorized } from "../../lib/errors.js";
 import { invalidateUserPerms } from "../rbac/perms.js";
 import { logAudit } from "../rbac/audit.js";
+import { enqueueEmail } from "../../queues/email.queue.js";
 
 const BCRYPT_ROUNDS = 10;
 const refreshTtlMs = env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000;
+const PASSWORD_RESET_TTL_SEC = 60 * 60; // 1 hour
 
 function hashToken(raw) {
   return crypto.createHash("sha256").update(raw).digest("hex");
@@ -140,6 +142,32 @@ async function revokeAllForUser(userId) {
 
 export async function logoutAll(userId) {
   await revokeAllForUser(userId);
+}
+
+// Generate a reset token, store its hash in redis, and email the link.
+// Always resolves the same way to avoid leaking which emails are registered.
+export async function requestPasswordReset(email) {
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, isActive: true } });
+  if (user && user.isActive) {
+    const raw = `${uuidv4()}${uuidv4()}`.replace(/-/g, "");
+    await redis.set(`pwreset:${hashToken(raw)}`, user.id, "EX", PASSWORD_RESET_TTL_SEC);
+    enqueueEmail({ to: email, kind: "password_reset", data: { token: raw } });
+    logAudit({ actorId: user.id, action: "auth.password_reset.requested", metadata: { email } });
+  }
+  return { status: "ok" };
+}
+
+export async function resetPassword(token, newPassword) {
+  const key = `pwreset:${hashToken(token)}`;
+  const userId = await redis.get(key);
+  if (!userId) throw BadRequest("Invalid or expired reset token", "INVALID_RESET_TOKEN");
+
+  const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  await redis.del(key);
+  await revokeAllForUser(userId);
+  logAudit({ actorId: userId, action: "auth.password_reset.completed" });
+  return { status: "ok" };
 }
 
 export async function changePassword(userId, currentPassword, newPassword) {

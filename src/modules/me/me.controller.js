@@ -28,6 +28,10 @@ export const updateSettings = async (req, res) => {
   res.json(await svc.updateSettings(req.user.id, input.settings));
 };
 
+export const dashboard = async (req, res) => {
+  res.json(await svc.getDashboard(req.user.id));
+};
+
 export const remove = async (req, res) => {
   await svc.deactivateSelf(req.user.id);
   res.status(204).end();

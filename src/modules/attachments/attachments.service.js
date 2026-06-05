@@ -1,8 +1,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import { prisma } from "../../config/db.js";
-import { minio, MINIO_BUCKET } from "../../config/minio.js";
-import { env } from "../../config/env.js";
+import { minio, minioPublic, MINIO_BUCKET, publicUrl } from "../../config/minio.js";
 import { NotFound } from "../../lib/errors.js";
 import { assertCardAccess } from "../cards/cards.service.js";
 import { assertWorkspaceAccess } from "../workspaces/workspaces.service.js";
@@ -23,10 +22,6 @@ const ATTACHMENT_SELECT = {
   uploader: { select: { id: true, name: true, email: true, avatarUrl: true } },
 };
 
-function publicUrl(key) {
-  return `http://${env.MINIO_ENDPOINT}:${env.MINIO_PORT}/${MINIO_BUCKET}/${key}`;
-}
-
 function withUrl(a) {
   return { ...a, fileUrl: publicUrl(a.key) };
 }
@@ -35,7 +30,7 @@ export async function presignUpload(userId, cardId, { filename, contentType }) {
   await assertCardAccess(userId, cardId, "ws_member");
   const ext = path.extname(filename || "").slice(0, 16);
   const key = `attachments/${cardId}/${crypto.randomUUID()}${ext}`;
-  const uploadUrl = await minio.presignedPutObject(MINIO_BUCKET, key, PUT_EXPIRY);
+  const uploadUrl = await minioPublic.presignedPutObject(MINIO_BUCKET, key, PUT_EXPIRY);
   return { uploadUrl, key, fileUrl: publicUrl(key), contentType };
 }
 
@@ -92,7 +87,7 @@ async function loadAttachmentWithScope(attachmentId) {
 export async function getDownloadUrl(userId, attachmentId) {
   const att = await loadAttachmentWithScope(attachmentId);
   await assertWorkspaceAccess(userId, att.card.list.board.workspaceId);
-  const url = await minio.presignedGetObject(MINIO_BUCKET, att.key, GET_EXPIRY);
+  const url = await minioPublic.presignedGetObject(MINIO_BUCKET, att.key, GET_EXPIRY);
   return { url };
 }
 

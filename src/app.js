@@ -21,6 +21,7 @@ import { meRouter } from "./modules/me/me.routes.js";
 import { notificationsRouter } from "./modules/notifications/notifications.routes.js";
 import { attachmentsRouter } from "./modules/attachments/attachments.routes.js";
 import { searchRouter } from "./modules/search/search.routes.js";
+import { customFieldsRouter } from "./modules/customFields/customFields.routes.js";
 
 export function createApp() {
   const app = express();
@@ -55,6 +56,7 @@ export function createApp() {
   app.use("/api/labels", labelsRouter);
   app.use("/api/checklists", checklistsRouter);
   app.use("/api/checklist-items", checklistItemsRouter);
+  app.use("/api/custom-fields", customFieldsRouter);
   app.use("/api/attachments", attachmentsRouter);
   app.use("/api/search", searchRouter);
   app.use("/api/admin", adminRouter);

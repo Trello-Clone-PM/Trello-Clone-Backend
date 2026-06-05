@@ -1,4 +1,7 @@
-import { registerSchema, loginSchema, changePasswordSchema } from "./auth.schema.js";
+import {
+  registerSchema, loginSchema, changePasswordSchema,
+  forgotPasswordSchema, resetPasswordSchema,
+} from "./auth.schema.js";
 import * as service from "./auth.service.js";
 import { REFRESH_COOKIE_NAME, refreshCookieOptions } from "./tokens.js";
 import { Unauthorized } from "../../lib/errors.js";
@@ -51,6 +54,18 @@ export const logoutAllHandler = async (req, res) => {
   if (!user) throw Unauthorized();
   await service.logoutAll(user.id);
   clearRefreshCookie(res);
+  res.json({ status: "ok" });
+};
+
+export const forgotPasswordHandler = async (req, res) => {
+  const input = forgotPasswordSchema.parse(req.body);
+  await service.requestPasswordReset(input.email);
+  res.json({ status: "ok" });
+};
+
+export const resetPasswordHandler = async (req, res) => {
+  const input = resetPasswordSchema.parse(req.body);
+  await service.resetPassword(input.token, input.newPassword);
   res.json({ status: "ok" });
 };
 

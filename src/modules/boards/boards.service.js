@@ -2,6 +2,8 @@ import { prisma } from "../../config/db.js";
 import { NotFound } from "../../lib/errors.js";
 import { assertWorkspaceAccess } from "../workspaces/workspaces.service.js";
 
+const MEMBER_USER = { id: true, name: true, email: true, avatarUrl: true };
+
 // Board access derives from its workspace membership (MVP rule).
 // Returns { board, role } or throws 404/403.
 export async function assertBoardAccess(userId, boardId, minRole) {
@@ -32,6 +34,52 @@ export async function listBoards(userId, workspaceId) {
     },
   });
   return boards.map(({ stars, ...b }) => ({ ...b, starred: stars.length > 0 }));
+}
+
+/* ---------------------------------------------------------- Board members */
+
+export async function listBoardMembers(userId, boardId) {
+  await assertBoardAccess(userId, boardId);
+  const members = await prisma.boardMember.findMany({
+    where: { boardId },
+    orderBy: { createdAt: "asc" },
+    select: { role: true, user: { select: MEMBER_USER } },
+  });
+  return members.map((m) => ({ ...m.user, role: m.role }));
+}
+
+export async function addBoardMember(userId, boardId, targetId, role) {
+  await assertBoardAccess(userId, boardId, "ws_member");
+  const target = await prisma.user.findUnique({ where: { id: targetId }, select: MEMBER_USER });
+  if (!target) throw NotFound("User not found", "USER_NOT_FOUND");
+  const { board } = await assertBoardAccess(userId, boardId);
+  await assertWorkspaceAccess(target.id, board.workspaceId); // must belong to the workspace
+  const m = await prisma.boardMember.upsert({
+    where: { boardId_userId: { boardId, userId: targetId } },
+    create: { boardId, userId: targetId, role: role ?? "member" },
+    update: role ? { role } : {},
+    select: { role: true, user: { select: MEMBER_USER } },
+  });
+  return { ...m.user, role: m.role };
+}
+
+export async function updateBoardMember(userId, boardId, targetId, role) {
+  await assertBoardAccess(userId, boardId, "ws_member");
+  const existing = await prisma.boardMember.findUnique({
+    where: { boardId_userId: { boardId, userId: targetId } },
+  });
+  if (!existing) throw NotFound("Board member not found");
+  const m = await prisma.boardMember.update({
+    where: { boardId_userId: { boardId, userId: targetId } },
+    data: { role },
+    select: { role: true, user: { select: MEMBER_USER } },
+  });
+  return { ...m.user, role: m.role };
+}
+
+export async function removeBoardMember(userId, boardId, targetId) {
+  await assertBoardAccess(userId, boardId, "ws_member");
+  await prisma.boardMember.deleteMany({ where: { boardId, userId: targetId } });
 }
 
 export async function setBoardStar(userId, boardId, starred) {
@@ -110,6 +158,10 @@ export async function getBoardDetail(userId, boardId) {
       archived: true,
       createdAt: true,
       stars: { where: { userId }, select: { userId: true } },
+      customFields: {
+        orderBy: { position: "asc" },
+        select: { id: true, boardId: true, name: true, type: true, options: true, position: true },
+      },
       labels: { select: { id: true, name: true, color: true, boardId: true } },
       lists: {
         where: { archived: false },
@@ -193,6 +245,7 @@ export async function getBoardDetail(userId, boardId) {
     createdAt: board.createdAt,
     starred: board.stars.length > 0,
     labels: board.labels,
+    customFields: board.customFields,
     lists,
   };
 }

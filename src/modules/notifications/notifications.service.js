@@ -1,6 +1,8 @@
 import { prisma } from "../../config/db.js";
 import { NotFound } from "../../lib/errors.js";
 import { emitToUser } from "../../realtime/index.js";
+import { enqueueEmail } from "../../queues/email.queue.js";
+import { emailEnabled } from "../../lib/notifyPrefs.js";
 
 const NOTIF_SELECT = {
   id: true,
@@ -10,7 +12,11 @@ const NOTIF_SELECT = {
   createdAt: true,
 };
 
-// Best-effort: create a notification and push it over the socket. Never throws to caller.
+// Notification types that also trigger an email (when the user hasn't opted out).
+const EMAIL_TYPES = new Set(["assigned", "invite"]);
+
+// Best-effort: create a notification, push it over the socket, and optionally
+// enqueue an email. Never throws to caller.
 export async function notify(userId, type, payload) {
   if (!userId) return;
   try {
@@ -19,6 +25,16 @@ export async function notify(userId, type, payload) {
       select: NOTIF_SELECT,
     });
     emitToUser(userId, "notification:new", n);
+
+    if (EMAIL_TYPES.has(type)) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, settings: true },
+      });
+      if (user?.email && emailEnabled(user.settings, type)) {
+        enqueueEmail({ to: user.email, kind: type, data: payload ?? {} });
+      }
+    }
   } catch (e) {
     console.error("notify failed:", e);
   }
