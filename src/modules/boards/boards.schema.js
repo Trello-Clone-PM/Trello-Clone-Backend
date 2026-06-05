@@ -5,6 +5,7 @@ const visibility = z.enum(["private", "workspace", "public"]);
 export const createBoardSchema = z.object({
   workspaceId: z.string().uuid(),
   name: z.string().min(1).max(160),
+  description: z.string().max(4096).optional(),
   background: z.string().max(512).optional(),
   visibility: visibility.optional(),
 });
@@ -12,8 +13,11 @@ export const createBoardSchema = z.object({
 export const updateBoardSchema = z
   .object({
     name: z.string().min(1).max(160).optional(),
+    description: z.string().max(4096).nullable().optional(),
     background: z.string().max(512).nullable().optional(),
     visibility: visibility.optional(),
     archived: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "No fields to update" });
+
+export const starBoardSchema = z.object({ starred: z.boolean() });

@@ -11,4 +11,5 @@ listsRouter.get("/", ah(c.list));
 listsRouter.post("/", ah(c.create));
 listsRouter.get("/:id", ah(c.get));
 listsRouter.patch("/:id", ah(c.update));
+listsRouter.post("/:id/sort", ah(c.sort));
 listsRouter.delete("/:id", ah(c.remove));

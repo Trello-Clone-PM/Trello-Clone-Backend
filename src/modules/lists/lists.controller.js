@@ -1,5 +1,5 @@
 import * as service from "./lists.service.js";
-import { createListSchema, updateListSchema } from "./lists.schema.js";
+import { createListSchema, updateListSchema, sortListSchema } from "./lists.schema.js";
 import { BadRequest } from "../../lib/errors.js";
 
 export const list = async (req, res) => {
@@ -25,4 +25,9 @@ export const update = async (req, res) => {
 export const remove = async (req, res) => {
   await service.deleteList(req.user.id, req.params.id);
   res.status(204).end();
+};
+
+export const sort = async (req, res) => {
+  const { by } = sortListSchema.parse(req.body);
+  res.json(await service.sortListCards(req.user.id, req.params.id, by));
 };

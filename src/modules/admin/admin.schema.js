@@ -37,6 +37,22 @@ export const lockSchema = z.object({
   locked: z.boolean(),
 });
 
+export const idParamSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
+export const rolePermissionsSchema = z.object({
+  permissionKeys: z.array(z.string().min(1)).max(500),
+});
+
+export const configPatchSchema = z
+  .object({
+    features: z.record(z.any()).optional(),
+    limits: z.record(z.any()).optional(),
+    smtp: z.record(z.any()).optional(),
+  })
+  .refine((d) => Object.keys(d).length > 0, { message: "Empty patch" });
+
 export const auditQuerySchema = z.object({
   actor: z.string().uuid().optional(),
   action: z.string().optional(),

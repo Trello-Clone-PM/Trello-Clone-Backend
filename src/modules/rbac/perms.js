@@ -54,3 +54,14 @@ export async function getUserRoleKeys(userId) {
 export async function invalidateUserPerms(userId) {
   await redis.del(permsKey(userId)).catch(() => undefined);
 }
+
+// Invalidate perms cache for every user currently holding a given role.
+export async function invalidatePermsForRole(roleId) {
+  const rows = await prisma.userRole.findMany({
+    where: { roleId },
+    select: { userId: true },
+  });
+  const ids = [...new Set(rows.map((r) => r.userId))];
+  if (ids.length === 0) return;
+  await redis.del(ids.map(permsKey)).catch(() => undefined);
+}

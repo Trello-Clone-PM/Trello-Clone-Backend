@@ -8,6 +8,9 @@ import {
   updateWorkspaceSchema,
   transferOwnerSchema,
   lockSchema,
+  idParamSchema,
+  rolePermissionsSchema,
+  configPatchSchema,
 } from "./admin.schema.js";
 
 const ctxOf = (req) => ({ ip: req.ip, userAgent: req.headers["user-agent"] });
@@ -81,4 +84,44 @@ export const lockWorkspace = async (req, res) => {
 
 export const storage = async (_req, res) => {
   res.json(await service.getStorage());
+};
+
+export const listRoles = async (_req, res) => {
+  res.json(await service.listRoles());
+};
+
+export const getRole = async (req, res) => {
+  const { id } = idParamSchema.parse(req.params);
+  res.json(await service.getRole(id));
+};
+
+export const listPermissions = async (_req, res) => {
+  res.json(await service.listPermissions());
+};
+
+export const setRolePermissions = async (req, res) => {
+  const { id } = idParamSchema.parse(req.params);
+  const input = rolePermissionsSchema.parse(req.body);
+  res.json(await service.setRolePermissions(req.user.id, id, input.permissionKeys, ctxOf(req)));
+};
+
+export const getWorkspace = async (req, res) => {
+  res.json(await service.getWorkspaceDetail(req.params.id));
+};
+
+export const health = async (_req, res) => {
+  res.json(await service.getHealth());
+};
+
+export const getConfig = async (_req, res) => {
+  res.json(await service.getConfig());
+};
+
+export const updateConfig = async (req, res) => {
+  const input = configPatchSchema.parse(req.body);
+  res.json(await service.updateConfig(req.user.id, input, ctxOf(req)));
+};
+
+export const storageCleanup = async (req, res) => {
+  res.json(await service.cleanupStorage(req.user.id, ctxOf(req)));
 };

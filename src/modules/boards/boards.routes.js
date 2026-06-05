@@ -13,6 +13,7 @@ boardsRouter.post("/", ah(c.create));
 boardsRouter.get("/:id", ah(c.get));
 boardsRouter.patch("/:id", ah(c.update));
 boardsRouter.delete("/:id", ah(c.remove));
+boardsRouter.put("/:id/star", ah(c.star));
 
 boardsRouter.get("/:id/labels", ah(labels.listForBoard));
 boardsRouter.post("/:id/labels", ah(labels.createForBoard));

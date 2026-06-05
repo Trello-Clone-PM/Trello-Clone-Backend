@@ -32,6 +32,8 @@ model User {
   attachments   Attachment[]
   activities    Activity[]
   notifications Notification[]
+  boardStars    BoardStar[]
+  cardWatchers  CardWatcher[]
 
   @@map("users")
 }
@@ -154,6 +156,7 @@ model Board {
   id          String     @id @default(uuid()) @db.Uuid
   workspaceId String     @map("workspace_id") @db.Uuid
   name        String
+  description String?
   background  String?
   visibility  Visibility @default(workspace)
   archived    Boolean    @default(false)
@@ -164,9 +167,23 @@ model Board {
   lists      List[]
   labels     Label[]
   activities Activity[]
+  stars      BoardStar[]
 
   @@index([workspaceId])
   @@map("boards")
+}
+
+model BoardStar {
+  boardId   String   @map("board_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([boardId, userId])
+  @@index([userId])
+  @@map("board_stars")
 }
 
 model List {
@@ -198,16 +215,29 @@ model Card {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  list        List         @relation(fields: [listId], references: [id], onDelete: Cascade)
+  list        List          @relation(fields: [listId], references: [id], onDelete: Cascade)
   members     CardMember[]
   cardLabels  CardLabel[]
   checklists  Checklist[]
   comments    Comment[]
   attachments Attachment[]
   activities  Activity[]
+  watchers    CardWatcher[]
 
   @@index([listId])
   @@map("cards")
+}
+
+model CardWatcher {
+  cardId String @map("card_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, userId])
+  @@index([userId])
+  @@map("card_watchers")
 }
 
 model CardMember {
@@ -322,6 +352,14 @@ model Activity {
   @@index([boardId, createdAt(sort: Desc)])
   @@index([cardId, createdAt(sort: Desc)])
   @@map("activities")
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("settings")
 }
 
 model Notification {

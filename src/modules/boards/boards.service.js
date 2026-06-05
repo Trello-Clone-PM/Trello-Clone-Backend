@@ -16,19 +16,36 @@ export async function assertBoardAccess(userId, boardId, minRole) {
 
 export async function listBoards(userId, workspaceId) {
   await assertWorkspaceAccess(userId, workspaceId);
-  return prisma.board.findMany({
+  const boards = await prisma.board.findMany({
     where: { workspaceId },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
       workspaceId: true,
       name: true,
+      description: true,
       background: true,
       visibility: true,
       archived: true,
       createdAt: true,
+      stars: { where: { userId }, select: { userId: true } },
     },
   });
+  return boards.map(({ stars, ...b }) => ({ ...b, starred: stars.length > 0 }));
+}
+
+export async function setBoardStar(userId, boardId, starred) {
+  await assertBoardAccess(userId, boardId);
+  if (starred) {
+    await prisma.boardStar.upsert({
+      where: { boardId_userId: { boardId, userId } },
+      create: { boardId, userId },
+      update: {},
+    });
+  } else {
+    await prisma.boardStar.deleteMany({ where: { boardId, userId } });
+  }
+  return { boardId, starred };
 }
 
 export async function createBoard(userId, input) {
@@ -37,6 +54,7 @@ export async function createBoard(userId, input) {
     data: {
       workspaceId: input.workspaceId,
       name: input.name,
+      description: input.description,
       background: input.background,
       visibility: input.visibility ?? "workspace",
     },
@@ -44,6 +62,7 @@ export async function createBoard(userId, input) {
       id: true,
       workspaceId: true,
       name: true,
+      description: true,
       background: true,
       visibility: true,
       archived: true,
@@ -61,6 +80,7 @@ export async function updateBoard(userId, boardId, input) {
       id: true,
       workspaceId: true,
       name: true,
+      description: true,
       background: true,
       visibility: true,
       archived: true,
@@ -84,10 +104,12 @@ export async function getBoardDetail(userId, boardId) {
       id: true,
       workspaceId: true,
       name: true,
+      description: true,
       background: true,
       visibility: true,
       archived: true,
       createdAt: true,
+      stars: { where: { userId }, select: { userId: true } },
       labels: { select: { id: true, name: true, color: true, boardId: true } },
       lists: {
         where: { archived: false },
@@ -164,10 +186,12 @@ export async function getBoardDetail(userId, boardId) {
     id: board.id,
     workspaceId: board.workspaceId,
     name: board.name,
+    description: board.description,
     background: board.background,
     visibility: board.visibility,
     archived: board.archived,
     createdAt: board.createdAt,
+    starred: board.stars.length > 0,
     labels: board.labels,
     lists,
   };

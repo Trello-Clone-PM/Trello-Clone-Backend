@@ -4,9 +4,18 @@ import { v4 as uuidv4 } from "uuid";
 import { prisma } from "../../config/db.js";
 import { env } from "../../config/env.js";
 import { BadRequest, NotFound, Forbidden } from "../../lib/errors.js";
-import { invalidateUserPerms, getUserRoleKeys, getUserPermissions } from "../rbac/perms.js";
+import {
+  invalidateUserPerms,
+  invalidatePermsForRole,
+  getUserRoleKeys,
+  getUserPermissions,
+} from "../rbac/perms.js";
 import { logAudit } from "../rbac/audit.js";
 import { signAccessToken } from "../auth/tokens.js";
+import { dbHealthy } from "../../config/db.js";
+import { redisHealthy } from "../../config/redis.js";
+import { minio, MINIO_BUCKET } from "../../config/minio.js";
+import { getOnlineCount } from "../../realtime/index.js";
 
 const BCRYPT_ROUNDS = 10;
 
@@ -464,4 +473,314 @@ export async function getStorage() {
       bytes: Number(r._sum.size ?? 0),
     })),
   };
+}
+
+// ===== Roles & Permissions =====
+
+export async function listRoles() {
+  const roles = await prisma.role.findMany({
+    orderBy: { id: "asc" },
+    select: {
+      id: true,
+      key: true,
+      name: true,
+      description: true,
+      isSystem: true,
+      _count: { select: { rolePermissions: true, userRoles: true } },
+    },
+  });
+  return roles.map((r) => ({
+    id: r.id,
+    key: r.key,
+    name: r.name,
+    description: r.description,
+    isSystem: r.isSystem,
+    permissionCount: r._count.rolePermissions,
+    userCount: r._count.userRoles,
+  }));
+}
+
+export async function getRole(roleId) {
+  const role = await prisma.role.findUnique({
+    where: { id: roleId },
+    select: {
+      id: true,
+      key: true,
+      name: true,
+      description: true,
+      isSystem: true,
+      rolePermissions: { select: { permission: { select: { key: true } } } },
+    },
+  });
+  if (!role) throw NotFound("Role not found");
+  const { rolePermissions, ...rest } = role;
+  return { role: rest, permissions: rolePermissions.map((rp) => rp.permission.key) };
+}
+
+export async function listPermissions() {
+  const perms = await prisma.permission.findMany({
+    orderBy: [{ resource: "asc" }, { action: "asc" }],
+    select: { id: true, key: true, resource: true, action: true, description: true },
+  });
+  const groups = new Map();
+  for (const p of perms) {
+    if (!groups.has(p.resource)) groups.set(p.resource, []);
+    groups.get(p.resource).push({
+      id: p.id,
+      key: p.key,
+      action: p.action,
+      description: p.description,
+    });
+  }
+  return [...groups.entries()].map(([resource, items]) => ({ resource, items }));
+}
+
+export async function setRolePermissions(actorId, roleId, permissionKeys, ctx) {
+  const role = await prisma.role.findUnique({ where: { id: roleId }, select: { id: true } });
+  if (!role) throw NotFound("Role not found");
+
+  const keys = [...new Set(permissionKeys)];
+  const perms = keys.length
+    ? await prisma.permission.findMany({ where: { key: { in: keys } }, select: { id: true, key: true } })
+    : [];
+  const foundKeys = new Set(perms.map((p) => p.key));
+  const unknown = keys.filter((k) => !foundKeys.has(k));
+  if (unknown.length) throw BadRequest(`Unknown permissions: ${unknown.join(", ")}`, "UNKNOWN_PERMISSION");
+
+  await prisma.$transaction([
+    prisma.rolePermission.deleteMany({ where: { roleId } }),
+    ...(perms.length
+      ? [prisma.rolePermission.createMany({
+          data: perms.map((p) => ({ roleId, permissionId: p.id })),
+          skipDuplicates: true,
+        })]
+      : []),
+  ]);
+
+  await invalidatePermsForRole(roleId);
+  logAudit({
+    actorId,
+    targetId: null,
+    action: "admin.role.permissions_updated",
+    metadata: { roleId, permissionKeys: keys },
+    ipAddress: ctx?.ip,
+    userAgent: ctx?.userAgent,
+  });
+  return { status: "ok", permissions: keys };
+}
+
+// ===== Workspace detail =====
+
+export async function getWorkspaceDetail(workspaceId) {
+  const ws = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: {
+      id: true,
+      name: true,
+      visibility: true,
+      isLocked: true,
+      createdAt: true,
+      owner: { select: { id: true, email: true, name: true } },
+      boards: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          name: true,
+          archived: true,
+          _count: { select: { lists: true } },
+          lists: { select: { _count: { select: { cards: true } } } },
+        },
+      },
+    },
+  });
+  if (!ws) throw NotFound("Workspace not found");
+
+  const boards = ws.boards.map((b) => ({
+    id: b.id,
+    name: b.name,
+    archived: b.archived,
+    listCount: b._count.lists,
+    cardCount: b.lists.reduce((sum, l) => sum + l._count.cards, 0),
+  }));
+  const cardCount = boards.reduce((sum, b) => sum + b.cardCount, 0);
+
+  // Members: distinct users with a role scoped to this workspace.
+  const memberRoles = await prisma.userRole.findMany({
+    where: { tenantId: workspaceId },
+    select: {
+      userId: true,
+      user: { select: { email: true, name: true } },
+      role: { select: { key: true } },
+    },
+  });
+  const memberMap = new Map();
+  for (const m of memberRoles) {
+    if (!memberMap.has(m.userId)) {
+      memberMap.set(m.userId, {
+        userId: m.userId,
+        email: m.user.email,
+        name: m.user.name,
+        role: m.role.key,
+      });
+    }
+  }
+  const members = [...memberMap.values()];
+
+  return {
+    id: ws.id,
+    name: ws.name,
+    visibility: ws.visibility,
+    isLocked: ws.isLocked,
+    owner: ws.owner,
+    createdAt: ws.createdAt,
+    counts: { boards: boards.length, members: members.length, cards: cardCount },
+    boards,
+    members,
+  };
+}
+
+// ===== Health / Monitoring =====
+
+let startedAt = Date.now();
+
+async function minioHealthy() {
+  try {
+    return await minio.bucketExists(MINIO_BUCKET);
+  } catch {
+    return false;
+  }
+}
+
+export async function getHealth() {
+  const [db, redisUp, minioUp] = await Promise.all([
+    dbHealthy().catch(() => false),
+    redisHealthy().catch(() => false),
+    minioHealthy(),
+  ]);
+
+  let counts = { users: 0, workspaces: 0, boards: 0, cards: 0, comments: 0 };
+  if (db) {
+    const [users, workspaces, boards, cards, comments] = await Promise.all([
+      prisma.user.count(),
+      prisma.workspace.count(),
+      prisma.board.count(),
+      prisma.card.count(),
+      prisma.comment.count(),
+    ]);
+    counts = { users, workspaces, boards, cards, comments };
+  }
+
+  return {
+    services: { api: "up", db, redis: redisUp, minio: minioUp },
+    counts,
+    onlineUsers: getOnlineCount(),
+    uptimeSec: Math.floor((Date.now() - startedAt) / 1000),
+  };
+}
+
+// ===== System config =====
+
+const CONFIG_KEY = "system";
+
+const CONFIG_DEFAULTS = {
+  features: { registration: true, attachments: true, comments: true, invites: true },
+  limits: { maxUploadMb: 25, workspaceQuotaMb: 1024 },
+  smtp: { host: "", port: 587, user: "", from: "" },
+};
+
+function isObject(v) {
+  return v && typeof v === "object" && !Array.isArray(v);
+}
+
+function deepMerge(base, patch) {
+  const out = { ...base };
+  for (const [k, v] of Object.entries(patch ?? {})) {
+    out[k] = isObject(v) && isObject(out[k]) ? deepMerge(out[k], v) : v;
+  }
+  return out;
+}
+
+function stripSmtpPassword(config) {
+  if (isObject(config?.smtp)) {
+    const { password, pass, ...rest } = config.smtp;
+    return { ...config, smtp: rest };
+  }
+  return config;
+}
+
+export async function getConfig() {
+  const row = await prisma.setting.findUnique({ where: { key: CONFIG_KEY } });
+  const merged = deepMerge(CONFIG_DEFAULTS, isObject(row?.value) ? row.value : {});
+  return stripSmtpPassword(merged);
+}
+
+export async function updateConfig(actorId, patch, ctx) {
+  const row = await prisma.setting.findUnique({ where: { key: CONFIG_KEY } });
+  const current = deepMerge(CONFIG_DEFAULTS, isObject(row?.value) ? row.value : {});
+  const next = deepMerge(current, patch);
+
+  await prisma.setting.upsert({
+    where: { key: CONFIG_KEY },
+    update: { value: next },
+    create: { key: CONFIG_KEY, value: next },
+  });
+
+  logAudit({
+    actorId,
+    targetId: null,
+    action: "admin.config.updated",
+    metadata: { keys: Object.keys(patch ?? {}) },
+    ipAddress: ctx?.ip,
+    userAgent: ctx?.userAgent,
+  });
+  return stripSmtpPassword(next);
+}
+
+// ===== Storage cleanup =====
+
+const CLEANUP_LIMIT = 500;
+
+export async function cleanupStorage(actorId, ctx) {
+  // Bounded scan; cardId FK is enforced so orphan-by-card is rare, but check objects.
+  const attachments = await prisma.attachment.findMany({
+    take: CLEANUP_LIMIT,
+    orderBy: { createdAt: "asc" },
+    select: { id: true, key: true, cardId: true },
+  });
+
+  const orphans = [];
+  for (const a of attachments) {
+    let orphan = false;
+    const card = await prisma.card.findUnique({ where: { id: a.cardId }, select: { id: true } });
+    if (!card) orphan = true;
+    else {
+      try {
+        await minio.statObject(MINIO_BUCKET, a.key);
+      } catch {
+        orphan = true; // object missing
+      }
+    }
+    if (orphan) orphans.push(a);
+  }
+
+  let removed = 0;
+  for (const a of orphans) {
+    try {
+      await minio.removeObject(MINIO_BUCKET, a.key).catch(() => undefined);
+      await prisma.attachment.delete({ where: { id: a.id } });
+      removed++;
+    } catch {
+      // skip rows that fail to delete
+    }
+  }
+
+  logAudit({
+    actorId,
+    targetId: null,
+    action: "admin.storage.cleanup",
+    metadata: { removed, scanned: attachments.length },
+    ipAddress: ctx?.ip,
+    userAgent: ctx?.userAgent,
+  });
+  return { removed };
 }

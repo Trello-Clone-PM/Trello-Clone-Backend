@@ -3,6 +3,17 @@ import { verifyAccessToken } from "../modules/auth/tokens.js";
 
 let io = null;
 
+// userId -> active socket count (a user may have multiple connections).
+const onlineUsers = new Map();
+
+export function getOnlineCount() {
+  return onlineUsers.size;
+}
+
+export function getOnlineUserIds() {
+  return [...onlineUsers.keys()];
+}
+
 function extractToken(socket) {
   const auth = socket.handshake.auth?.token;
   if (auth) return auth.startsWith("Bearer ") ? auth.slice(7) : auth;
@@ -32,7 +43,15 @@ export function initRealtime(httpServer) {
 
   io.on("connection", (socket) => {
     const userId = socket.data.userId;
-    if (userId) socket.join(`user:${userId}`);
+    if (userId) {
+      socket.join(`user:${userId}`);
+      onlineUsers.set(userId, (onlineUsers.get(userId) ?? 0) + 1);
+      socket.on("disconnect", () => {
+        const n = (onlineUsers.get(userId) ?? 1) - 1;
+        if (n <= 0) onlineUsers.delete(userId);
+        else onlineUsers.set(userId, n);
+      });
+    }
 
     socket.on("board:join", (payload) => {
       const boardId = typeof payload === "string" ? payload : payload?.boardId;

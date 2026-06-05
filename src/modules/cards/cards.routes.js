@@ -12,6 +12,8 @@ cardsRouter.post("/", ah(c.create));
 cardsRouter.get("/:id", ah(c.get));
 cardsRouter.patch("/:id", ah(c.update));
 cardsRouter.patch("/:id/move", ah(c.move));
+cardsRouter.post("/:id/duplicate", ah(c.duplicate));
+cardsRouter.put("/:id/watch", ah(c.watch));
 cardsRouter.delete("/:id", ah(c.remove));
 
 cardsRouter.get("/:id/comments", ah(c.listComments));

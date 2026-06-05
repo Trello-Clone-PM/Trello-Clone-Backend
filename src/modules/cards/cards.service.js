@@ -116,6 +116,7 @@ export async function getCardDetail(userId, cardId) {
       ...CARD_SELECT,
       cardLabels: { select: { label: { select: { id: true, name: true, color: true } } } },
       members: { select: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } } },
+      watchers: { where: { userId }, select: { userId: true } },
       comments: {
         orderBy: { createdAt: "asc" },
         select: {
@@ -143,11 +144,12 @@ export async function getCardDetail(userId, cardId) {
     },
   });
 
-  const { cardLabels, members, ...rest } = card;
+  const { cardLabels, members, watchers, ...rest } = card;
   return {
     ...rest,
     labels: cardLabels.map((cl) => cl.label),
     members: members.map((m) => m.user),
+    watching: watchers.length > 0,
   };
 }
 
@@ -172,14 +174,21 @@ export async function updateCard(userId, cardId, input) {
     },
   });
   emitToBoard(card.boardId, "card:updated", updated);
+  notifyWatchers(cardId, userId, "card.updated", {
+    cardId,
+    boardId: card.boardId,
+    title: updated.title,
+    fields: Object.keys(input),
+  });
   return updated;
 }
 
 export async function moveCard(userId, cardId, input) {
   const { card } = await assertCardAccess(userId, cardId, "ws_member");
   const dest = await listToBoard(input.listId);
-  if (dest.boardId !== card.boardId) {
-    throw BadRequest("Cannot move card across boards", "CROSS_BOARD_MOVE");
+  const crossBoard = dest.boardId !== card.boardId;
+  if (crossBoard && dest.workspaceId !== card.workspaceId) {
+    await assertWorkspaceAccess(userId, dest.workspaceId, "ws_member");
   }
 
   const updated = await prisma.card.update({
@@ -190,15 +199,112 @@ export async function moveCard(userId, cardId, input) {
 
   await prisma.activity.create({
     data: {
-      boardId: card.boardId,
+      boardId: dest.boardId,
       cardId,
       actorId: userId,
       action: "card.moved",
-      metadata: { fromList: card.listId, toList: input.listId, position: input.position },
+      metadata: {
+        fromList: card.listId,
+        toList: input.listId,
+        fromBoard: card.boardId,
+        toBoard: dest.boardId,
+        position: input.position,
+      },
     },
   });
-  emitToBoard(card.boardId, "card:moved", updated);
+  if (crossBoard) {
+    emitToBoard(card.boardId, "card:deleted", { id: cardId, listId: card.listId });
+    emitToBoard(dest.boardId, "card:created", updated);
+  } else {
+    emitToBoard(card.boardId, "card:moved", updated);
+  }
   return updated;
+}
+
+export async function duplicateCard(userId, cardId) {
+  const { card } = await assertCardAccess(userId, cardId, "ws_member");
+  const src = await prisma.card.findUnique({
+    where: { id: cardId },
+    select: {
+      listId: true,
+      title: true,
+      description: true,
+      dueDate: true,
+      startDate: true,
+      coverUrl: true,
+      cardLabels: { select: { labelId: true } },
+      members: { select: { userId: true } },
+      checklists: {
+        select: {
+          title: true,
+          position: true,
+          items: { select: { text: true, done: true, position: true } },
+        },
+      },
+    },
+  });
+
+  const max = await prisma.card.aggregate({
+    where: { listId: src.listId },
+    _max: { position: true },
+  });
+
+  const created = await prisma.card.create({
+    data: {
+      listId: src.listId,
+      title: `${src.title} (copy)`,
+      description: src.description,
+      dueDate: src.dueDate,
+      startDate: src.startDate,
+      coverUrl: src.coverUrl,
+      position: endPosition(max._max.position),
+      cardLabels: { create: src.cardLabels.map((l) => ({ labelId: l.labelId })) },
+      members: { create: src.members.map((m) => ({ userId: m.userId })) },
+      checklists: {
+        create: src.checklists.map((cl) => ({
+          title: cl.title,
+          position: cl.position,
+          items: { create: cl.items.map((it) => ({ text: it.text, done: it.done, position: it.position })) },
+        })),
+      },
+    },
+    select: CARD_SELECT,
+  });
+
+  await prisma.activity.create({
+    data: {
+      boardId: card.boardId,
+      cardId: created.id,
+      actorId: userId,
+      action: "card.created",
+      metadata: { title: created.title, duplicatedFrom: cardId },
+    },
+  });
+  emitToBoard(card.boardId, "card:created", created);
+  return created;
+}
+
+export async function setCardWatch(userId, cardId, watching) {
+  await assertCardAccess(userId, cardId);
+  if (watching) {
+    await prisma.cardWatcher.upsert({
+      where: { cardId_userId: { cardId, userId } },
+      create: { cardId, userId },
+      update: {},
+    });
+  } else {
+    await prisma.cardWatcher.deleteMany({ where: { cardId, userId } });
+  }
+  return { cardId, watching };
+}
+
+// Notify everyone watching a card except the actor.
+export async function notifyWatchers(cardId, actorId, type, payload) {
+  const watchers = await prisma.cardWatcher.findMany({
+    where: { cardId, userId: { not: actorId } },
+    select: { userId: true },
+  });
+  for (const w of watchers) notify(w.userId, type, payload);
 }
 
 export async function deleteCard(userId, cardId) {

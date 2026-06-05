@@ -38,6 +38,17 @@ export const remove = async (req, res) => {
   res.status(204).end();
 };
 
+export const duplicate = async (req, res) => {
+  res.status(201).json(await cards.duplicateCard(req.user.id, req.params.id));
+};
+
+const watchSchema = z.object({ watching: z.boolean() });
+
+export const watch = async (req, res) => {
+  const { watching } = watchSchema.parse(req.body);
+  res.json(await cards.setCardWatch(req.user.id, req.params.id, watching));
+};
+
 // --- nested: comments ---
 export const listComments = async (req, res) => {
   res.json(await comments.listComments(req.user.id, req.params.id));

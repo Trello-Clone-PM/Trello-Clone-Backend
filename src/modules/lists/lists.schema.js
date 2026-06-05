@@ -13,3 +13,5 @@ export const updateListSchema = z
     archived: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "No fields to update" });
+
+export const sortListSchema = z.object({ by: z.enum(["name", "due", "created"]) });

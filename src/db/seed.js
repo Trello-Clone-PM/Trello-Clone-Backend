@@ -56,6 +56,7 @@ const PERMISSIONS = [
   { key: "system.manage_settings", description: "Manage system settings" },
   { key: "system.impersonate", description: "Log in as another user" },
   { key: "storage.view", description: "View storage usage" },
+  { key: "storage.manage", description: "Manage / clean up storage" },
 ];
 
 const ROLES = [
@@ -89,7 +90,7 @@ const ROLE_PERMS = {
     "cards.create", "cards.read", "cards.update", "cards.delete",
     "comments.create", "comments.update", "comments.delete",
     "attachments.create", "attachments.delete",
-    "system.view_audit_log", "system.manage_settings", "storage.view",
+    "system.view_audit_log", "storage.view",
   ],
   support: [
     "users.list", "users.read",

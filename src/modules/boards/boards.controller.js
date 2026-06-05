@@ -1,5 +1,5 @@
 import * as service from "./boards.service.js";
-import { createBoardSchema, updateBoardSchema } from "./boards.schema.js";
+import { createBoardSchema, updateBoardSchema, starBoardSchema } from "./boards.schema.js";
 import { BadRequest } from "../../lib/errors.js";
 
 export const list = async (req, res) => {
@@ -25,4 +25,9 @@ export const update = async (req, res) => {
 export const remove = async (req, res) => {
   await service.deleteBoard(req.user.id, req.params.id);
   res.status(204).end();
+};
+
+export const star = async (req, res) => {
+  const { starred } = starBoardSchema.parse(req.body);
+  res.json(await service.setBoardStar(req.user.id, req.params.id, starred));
 };
