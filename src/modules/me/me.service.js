@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import { prisma } from "../../config/db.js";
+import { env } from "../../config/env.js";
 import { minioPublic, MINIO_BUCKET, publicUrl } from "../../config/minio.js";
 import { BadRequest, NotFound } from "../../lib/errors.js";
 import { logoutAll } from "../auth/auth.service.js";
