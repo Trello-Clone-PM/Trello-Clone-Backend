@@ -3,7 +3,7 @@ import path from "node:path";
 import { google } from "googleapis";
 
 const SCOPES = [
-  "https://www.googleapis.com/auth/drive.file",
+  "https://www.googleapis.com/auth/drive",
   "https://www.googleapis.com/auth/userinfo.email",
 ];
 
