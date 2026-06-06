@@ -1,5 +1,5 @@
 import * as service from "./lists.service.js";
-import { createListSchema, updateListSchema, sortListSchema } from "./lists.schema.js";
+import { createListSchema, updateListSchema, sortListSchema, moveListSchema } from "./lists.schema.js";
 import { BadRequest } from "../../lib/errors.js";
 
 export const list = async (req, res) => {
@@ -38,4 +38,9 @@ export const copy = async (req, res) => {
 
 export const archiveCards = async (req, res) => {
   res.json(await service.archiveListCards(req.user.id, req.params.id));
+};
+
+export const move = async (req, res) => {
+  const { targetBoardId } = moveListSchema.parse(req.body);
+  res.json(await service.moveList(req.user.id, req.params.id, targetBoardId));
 };

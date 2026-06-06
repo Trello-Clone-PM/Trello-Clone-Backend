@@ -290,6 +290,7 @@ export async function getBoardDetail(userId, boardId) {
           boardId: true,
           name: true,
           position: true,
+          wipLimit: true,
           archived: true,
           cards: {
             where: { archived: false },
@@ -325,6 +326,7 @@ export async function getBoardDetail(userId, boardId) {
     boardId: l.boardId,
     name: l.name,
     position: l.position,
+    wipLimit: l.wipLimit,
     archived: l.archived,
     cards: l.cards.map((card) => {
       let done = 0;

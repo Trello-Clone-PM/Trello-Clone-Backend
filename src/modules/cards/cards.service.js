@@ -87,6 +87,12 @@ export async function createCard(userId, input) {
   const { boardId, workspaceId } = await listToBoard(input.listId);
   await assertWorkspaceAccess(userId, workspaceId, "ws_member");
 
+  const list = await prisma.list.findUnique({ where: { id: input.listId }, select: { wipLimit: true } });
+  if (list?.wipLimit && list.wipLimit > 0) {
+    const count = await prisma.card.count({ where: { listId: input.listId, archived: false } });
+    if (count >= list.wipLimit) throw BadRequest(`WIP limit reached (${list.wipLimit})`, "WIP_LIMIT");
+  }
+
   let position = input.position;
   if (position == null) {
     const max = await prisma.card.aggregate({
@@ -118,6 +124,7 @@ export async function getCardDetail(userId, cardId) {
       members: { select: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } } },
       watchers: { where: { userId }, select: { userId: true } },
       fieldValues: { select: { fieldId: true, value: true } },
+      reactions: { select: { emoji: true, userId: true } },
       comments: {
         orderBy: { createdAt: "asc" },
         select: {
@@ -127,6 +134,7 @@ export async function getCardDetail(userId, cardId) {
           editedAt: true,
           createdAt: true,
           author: { select: { id: true, name: true, email: true, avatarUrl: true } },
+          reactions: { select: { emoji: true, userId: true } },
         },
       },
       checklists: {

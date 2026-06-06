@@ -14,4 +14,5 @@ checklistsRouter.delete("/:id", ah(c.removeChecklist));
 export const checklistItemsRouter = Router();
 checklistItemsRouter.use(authenticate);
 checklistItemsRouter.patch("/:id", ah(c.updateItem));
+checklistItemsRouter.post("/:id/convert-to-card", ah(c.convertItem));
 checklistItemsRouter.delete("/:id", ah(c.removeItem));

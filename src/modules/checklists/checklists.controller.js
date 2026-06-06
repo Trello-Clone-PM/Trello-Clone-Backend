@@ -25,3 +25,7 @@ export const removeItem = async (req, res) => {
   await service.deleteItem(req.user.id, req.params.id);
   res.status(204).end();
 };
+
+export const convertItem = async (req, res) => {
+  res.status(201).json(await service.convertItemToCard(req.user.id, req.params.id));
+};

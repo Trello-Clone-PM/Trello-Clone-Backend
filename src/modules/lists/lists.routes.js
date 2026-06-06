@@ -13,5 +13,6 @@ listsRouter.get("/:id", ah(c.get));
 listsRouter.patch("/:id", ah(c.update));
 listsRouter.post("/:id/sort", ah(c.sort));
 listsRouter.post("/:id/copy", ah(c.copy));
+listsRouter.post("/:id/move", ah(c.move));
 listsRouter.post("/:id/archive-cards", ah(c.archiveCards));
 listsRouter.delete("/:id", ah(c.remove));

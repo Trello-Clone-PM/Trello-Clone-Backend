@@ -24,6 +24,7 @@ import { searchRouter } from "./modules/search/search.routes.js";
 import { customFieldsRouter } from "./modules/customFields/customFields.routes.js";
 import { landingPublicRouter } from "./modules/landing/landing.public.routes.js";
 import { backupRouter, backupPublicRouter } from "./modules/backup/backup.routes.js";
+import { reactionsRouter } from "./modules/reactions/reactions.routes.js";
 
 export function createApp() {
   const app = express();
@@ -63,6 +64,7 @@ export function createApp() {
   app.use("/api/custom-fields", customFieldsRouter);
   app.use("/api/attachments", attachmentsRouter);
   app.use("/api/search", searchRouter);
+  app.use("/api/reactions", reactionsRouter);
   app.use("/api/admin/backup", backupRouter);
   app.use("/api/admin", adminRouter);
 

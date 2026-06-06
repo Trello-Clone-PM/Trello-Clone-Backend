@@ -35,8 +35,14 @@ export async function search(userId, q) {
     }),
     prisma.card.findMany({
       where: {
-        title: { contains: term, mode: "insensitive" },
         list: { board: { workspaceId: { in: wsIds } } },
+        OR: [
+          { title: { contains: term, mode: "insensitive" } },
+          { members: { some: { user: { OR: [
+            { name: { contains: term, mode: "insensitive" } },
+            { email: { contains: term, mode: "insensitive" } },
+          ] } } } },
+        ],
       },
       orderBy: { createdAt: "desc" },
       take: 12,
@@ -44,6 +50,7 @@ export async function search(userId, q) {
         id: true,
         title: true,
         list: { select: { name: true, boardId: true, board: { select: { name: true } } } },
+        members: { select: { user: { select: { name: true, avatarUrl: true } } } },
       },
     }),
   ]);
@@ -56,6 +63,7 @@ export async function search(userId, q) {
       boardId: c.list.boardId,
       boardName: c.list.board.name,
       listName: c.list.name,
+      members: c.members.map((m) => m.user),
     })),
   };
 }

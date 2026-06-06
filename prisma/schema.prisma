@@ -35,6 +35,7 @@ model User {
   boardStars    BoardStar[]
   cardWatchers  CardWatcher[]
   boardMembers  BoardMember[]
+  reactions     Reaction[]
 
   @@map("users")
 }
@@ -214,6 +215,7 @@ model List {
   boardId   String   @map("board_id") @db.Uuid
   name      String
   position  Float
+  wipLimit  Int?     @map("wip_limit")
   archived  Boolean  @default(false)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -247,6 +249,7 @@ model Card {
   activities  Activity[]
   watchers    CardWatcher[]
   fieldValues CustomFieldValue[]
+  reactions   Reaction[]
 
   @@index([listId])
   @@map("cards")
@@ -372,11 +375,31 @@ model Comment {
   editedAt  DateTime? @map("edited_at") @db.Timestamptz(6)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  card   Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  card      Card       @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reactions Reaction[]
 
   @@index([cardId])
   @@map("comments")
+}
+
+model Reaction {
+  id        String   @id @default(uuid()) @db.Uuid
+  cardId    String?  @map("card_id") @db.Uuid
+  commentId String?  @map("comment_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  emoji     String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  card    Card?    @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([cardId, userId, emoji])
+  @@unique([commentId, userId, emoji])
+  @@index([cardId])
+  @@index([commentId])
+  @@map("reactions")
 }
 
 model Attachment {

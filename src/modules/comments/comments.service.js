@@ -12,6 +12,7 @@ const COMMENT_SELECT = {
   editedAt: true,
   createdAt: true,
   author: { select: { id: true, name: true, email: true, avatarUrl: true } },
+  reactions: { select: { emoji: true, userId: true } },
 };
 
 export async function listComments(userId, cardId) {
