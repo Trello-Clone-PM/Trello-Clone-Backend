@@ -3,10 +3,18 @@ import * as service from "./backup.service.js";
 
 const ctxOf = (req) => ({ ip: req.ip, userAgent: req.headers["user-agent"] });
 
-// The OAuth callback lives on the API host at /api/backup/oauth/callback.
+// The OAuth callback lives at /api/backup/oauth/callback. The redirect_uri must
+// EXACTLY match what is registered in Google Cloud. Behind Cloudflare + gateway,
+// req.protocol is http, so prefer the client-sent origin, then x-forwarded-proto,
+// then default https for any non-localhost host.
 const redirectUriOf = (req) => {
-  const proto = req.headers["x-forwarded-proto"] || req.protocol;
-  const host = req.headers["x-forwarded-host"] || req.get("host");
+  const fromClient = req.query.origin;
+  if (typeof fromClient === "string" && /^https?:\/\/[^/\s]+$/.test(fromClient)) {
+    return `${fromClient.replace(/\/$/, "")}/api/backup/oauth/callback`;
+  }
+  const xf = req.headers["x-forwarded-proto"];
+  const host = req.headers["x-forwarded-host"] || req.get("host") || "localhost";
+  const proto = xf ? xf.split(",")[0].trim() : host.includes("localhost") ? "http" : "https";
   return `${proto}://${host}/api/backup/oauth/callback`;
 };
 
