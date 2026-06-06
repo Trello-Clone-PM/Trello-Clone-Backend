@@ -8,7 +8,8 @@ import { BadRequest } from "../../lib/errors.js";
 export const list = async (req, res) => {
   const workspaceId = req.query.workspaceId;
   if (!workspaceId) throw BadRequest("workspaceId query param required");
-  res.json(await service.listBoards(req.user.id, workspaceId));
+  const onlyTemplates = req.query.template === "1" || req.query.template === "true";
+  res.json(await service.listBoards(req.user.id, workspaceId, onlyTemplates));
 };
 
 export const create = async (req, res) => {

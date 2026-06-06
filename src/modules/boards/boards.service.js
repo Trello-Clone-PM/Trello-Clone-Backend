@@ -16,10 +16,10 @@ export async function assertBoardAccess(userId, boardId, minRole) {
   return { board, role };
 }
 
-export async function listBoards(userId, workspaceId) {
+export async function listBoards(userId, workspaceId, onlyTemplates = false) {
   await assertWorkspaceAccess(userId, workspaceId);
   const boards = await prisma.board.findMany({
-    where: { workspaceId },
+    where: { workspaceId, isTemplate: onlyTemplates },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
@@ -29,6 +29,7 @@ export async function listBoards(userId, workspaceId) {
       background: true,
       visibility: true,
       archived: true,
+      isTemplate: true,
       createdAt: true,
       stars: { where: { userId }, select: { userId: true } },
     },
@@ -251,6 +252,7 @@ export async function updateBoard(userId, boardId, input) {
       background: true,
       visibility: true,
       archived: true,
+      isTemplate: true,
       createdAt: true,
     },
   });
@@ -275,6 +277,7 @@ export async function getBoardDetail(userId, boardId) {
       background: true,
       visibility: true,
       archived: true,
+      isTemplate: true,
       createdAt: true,
       stars: { where: { userId }, select: { userId: true } },
       customFields: {
@@ -298,8 +301,10 @@ export async function getBoardDetail(userId, boardId) {
             select: {
               id: true,
               listId: true,
+              number: true,
               title: true,
               description: true,
+              status: true,
               position: true,
               dueDate: true,
               startDate: true,
@@ -340,8 +345,10 @@ export async function getBoardDetail(userId, boardId) {
       return {
         id: card.id,
         listId: card.listId,
+        number: card.number,
         title: card.title,
         description: card.description,
+        status: card.status,
         position: card.position,
         dueDate: card.dueDate,
         startDate: card.startDate,
@@ -366,6 +373,7 @@ export async function getBoardDetail(userId, boardId) {
     background: board.background,
     visibility: board.visibility,
     archived: board.archived,
+    isTemplate: board.isTemplate,
     createdAt: board.createdAt,
     starred: board.stars.length > 0,
     labels: board.labels,

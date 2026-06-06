@@ -17,6 +17,7 @@ export const updateBoardSchema = z
     background: z.string().max(512).nullable().optional(),
     visibility: visibility.optional(),
     archived: z.boolean().optional(),
+    isTemplate: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "No fields to update" });
 

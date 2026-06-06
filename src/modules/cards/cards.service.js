@@ -11,6 +11,7 @@ const CARD_SELECT = {
   number: true,
   title: true,
   description: true,
+  status: true,
   position: true,
   dueDate: true,
   startDate: true,

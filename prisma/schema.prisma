@@ -180,6 +180,7 @@ model Board {
   background  String?
   visibility  Visibility @default(workspace)
   archived    Boolean    @default(false)
+  isTemplate  Boolean    @default(false) @map("is_template")
   cardSeq     Int        @default(0) @map("card_seq")
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -252,6 +253,7 @@ model Card {
   number      Int?
   title       String
   description String?
+  status      String?
   position    Float
   dueDate     DateTime? @map("due_date") @db.Timestamptz(6)
   startDate   DateTime? @map("start_date") @db.Timestamptz(6)
