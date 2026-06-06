@@ -39,7 +39,14 @@ export const remove = async (req, res) => {
 };
 
 export const duplicate = async (req, res) => {
-  res.status(201).json(await cards.duplicateCard(req.user.id, req.params.id));
+  const opts = {};
+  if (req.body?.listId) opts.listId = req.body.listId;
+  if (typeof req.body?.title === "string" && req.body.title.trim()) opts.title = req.body.title.trim();
+  res.status(201).json(await cards.duplicateCard(req.user.id, req.params.id, opts));
+};
+
+export const cardTemplates = async (req, res) => {
+  res.json(await cards.listCardTemplates(req.user.id, req.params.id));
 };
 
 const watchSchema = z.object({ watching: z.boolean() });

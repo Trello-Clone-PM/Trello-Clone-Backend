@@ -16,6 +16,7 @@ model User {
   passwordHash String   @map("password_hash")
   name         String?
   avatarUrl    String?  @map("avatar_url")
+  bio          String?
   isActive     Boolean  @default(true) @map("is_active")
   tokenVersion Int      @default(0) @map("token_version")
   twofaSecret  String?  @map("twofa_secret")
@@ -254,6 +255,7 @@ model Card {
   title       String
   description String?
   status      String?
+  isTemplate  Boolean   @default(false) @map("is_template")
   position    Float
   dueDate     DateTime? @map("due_date") @db.Timestamptz(6)
   startDate   DateTime? @map("start_date") @db.Timestamptz(6)

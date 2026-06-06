@@ -1,6 +1,7 @@
 import { prisma } from "../../config/db.js";
 import { NotFound, BadRequest } from "../../lib/errors.js";
 import { assertWorkspaceAccess } from "../workspaces/workspaces.service.js";
+import { assertBoardAccess } from "../boards/boards.service.js";
 import { endPosition } from "../../lib/position.js";
 import { emitToBoard } from "../../realtime/index.js";
 import { notify } from "../notifications/notifications.service.js";
@@ -12,6 +13,7 @@ const CARD_SELECT = {
   title: true,
   description: true,
   status: true,
+  isTemplate: true,
   position: true,
   dueDate: true,
   startDate: true,
@@ -71,6 +73,7 @@ export async function listCards(userId, { boardId, listId }) {
 
   const cards = await prisma.card.findMany({
     where: {
+      isTemplate: false,
       list: { boardId: resolvedBoardId },
       ...(listId ? { listId } : {}),
     },
@@ -240,7 +243,8 @@ export async function moveCard(userId, cardId, input) {
   return updated;
 }
 
-export async function duplicateCard(userId, cardId) {
+// Clone a card. opts: { listId (target, same board), title, isTemplate }.
+export async function duplicateCard(userId, cardId, opts = {}) {
   const { card } = await assertCardAccess(userId, cardId, "ws_member");
   const src = await prisma.card.findUnique({
     where: { id: cardId },
@@ -248,6 +252,7 @@ export async function duplicateCard(userId, cardId) {
       listId: true,
       title: true,
       description: true,
+      status: true,
       dueDate: true,
       startDate: true,
       coverUrl: true,
@@ -263,31 +268,38 @@ export async function duplicateCard(userId, cardId) {
     },
   });
 
+  const targetListId = opts.listId ?? src.listId;
   const max = await prisma.card.aggregate({
-    where: { listId: src.listId },
+    where: { listId: targetListId },
     _max: { position: true },
   });
 
-  const created = await prisma.card.create({
-    data: {
-      listId: src.listId,
-      title: `${src.title} (copy)`,
-      description: src.description,
-      dueDate: src.dueDate,
-      startDate: src.startDate,
-      coverUrl: src.coverUrl,
-      position: endPosition(max._max.position),
-      cardLabels: { create: src.cardLabels.map((l) => ({ labelId: l.labelId })) },
-      members: { create: src.members.map((m) => ({ userId: m.userId })) },
-      checklists: {
-        create: src.checklists.map((cl) => ({
-          title: cl.title,
-          position: cl.position,
-          items: { create: cl.items.map((it) => ({ text: it.text, done: it.done, position: it.position })) },
-        })),
+  const created = await prisma.$transaction(async (tx) => {
+    const seq = await tx.board.update({ where: { id: card.boardId }, data: { cardSeq: { increment: 1 } }, select: { cardSeq: true } });
+    return tx.card.create({
+      data: {
+        listId: targetListId,
+        number: seq.cardSeq,
+        title: opts.title ?? `${src.title} (copy)`,
+        description: src.description,
+        status: src.status,
+        isTemplate: opts.isTemplate ?? false,
+        dueDate: src.dueDate,
+        startDate: src.startDate,
+        coverUrl: src.coverUrl,
+        position: endPosition(max._max.position),
+        cardLabels: { create: src.cardLabels.map((l) => ({ labelId: l.labelId })) },
+        members: { create: src.members.map((m) => ({ userId: m.userId })) },
+        checklists: {
+          create: src.checklists.map((cl) => ({
+            title: cl.title,
+            position: cl.position,
+            items: { create: cl.items.map((it) => ({ text: it.text, done: it.done, position: it.position })) },
+          })),
+        },
       },
-    },
-    select: CARD_SELECT,
+      select: CARD_SELECT,
+    });
   });
 
   await prisma.activity.create({
@@ -301,6 +313,17 @@ export async function duplicateCard(userId, cardId) {
   });
   emitToBoard(card.boardId, "card:created", created);
   return created;
+}
+
+// Board-scoped card templates (isTemplate=true). Returns light list.
+export async function listCardTemplates(userId, boardId) {
+  await assertBoardAccess(userId, boardId);
+  const cards = await prisma.card.findMany({
+    where: { isTemplate: true, list: { boardId } },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, title: true },
+  });
+  return cards;
 }
 
 export async function setCardWatch(userId, cardId, watching) {

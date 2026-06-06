@@ -4,6 +4,7 @@ import { ah } from "../../middleware/errorHandler.js";
 import * as c from "./boards.controller.js";
 import * as labels from "../labels/labels.controller.js";
 import * as fields from "../customFields/customFields.controller.js";
+import * as cardsC from "../cards/cards.controller.js";
 
 export const boardsRouter = Router();
 
@@ -27,3 +28,5 @@ boardsRouter.post("/:id/labels", ah(labels.createForBoard));
 
 boardsRouter.get("/:id/custom-fields", ah(fields.listForBoard));
 boardsRouter.post("/:id/custom-fields", ah(fields.createForBoard));
+
+boardsRouter.get("/:id/card-templates", ah(cardsC.cardTemplates));

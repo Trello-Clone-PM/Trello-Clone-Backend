@@ -14,6 +14,8 @@ workspacesRouter.patch("/:id", ah(c.update));
 workspacesRouter.delete("/:id", ah(c.remove));
 workspacesRouter.get("/:id/members", ah(c.listMembers));
 workspacesRouter.post("/:id/members", ah(c.addMember));
+workspacesRouter.patch("/:id/members/:userId", ah(c.updateMemberRole));
+workspacesRouter.delete("/:id/members/:userId", ah(c.removeMember));
 workspacesRouter.post("/:id/logo", ah(c.logoUpload));
 
 // Invite links

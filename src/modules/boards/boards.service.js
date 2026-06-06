@@ -296,7 +296,7 @@ export async function getBoardDetail(userId, boardId) {
           wipLimit: true,
           archived: true,
           cards: {
-            where: { archived: false },
+            where: { archived: false, isTemplate: false },
             orderBy: { position: "asc" },
             select: {
               id: true,

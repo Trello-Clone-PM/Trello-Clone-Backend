@@ -3,9 +3,21 @@ import { authenticate } from "../../middleware/authenticate.js";
 import { ah } from "../../middleware/errorHandler.js";
 import { prisma } from "../../config/db.js";
 import { getUserPermissions } from "../rbac/perms.js";
-import { Unauthorized } from "../../lib/errors.js";
+import { Unauthorized, NotFound } from "../../lib/errors.js";
+import { getPublicProfile } from "../me/me.service.js";
 
 export const usersRouter = Router();
+
+// GET /api/users/:id/profile — public profile (authenticated viewer).
+usersRouter.get(
+  "/users/:id/profile",
+  authenticate,
+  ah(async (req, res) => {
+    const profile = await getPublicProfile(req.params.id);
+    if (!profile) throw NotFound("User not found");
+    res.json(profile);
+  }),
+);
 
 // GET /api/me — user + roles + permissions for FE gating.
 usersRouter.get(
@@ -23,6 +35,7 @@ usersRouter.get(
           email: true,
           name: true,
           avatarUrl: true,
+          bio: true,
           isActive: true,
           settings: true,
           createdAt: true,

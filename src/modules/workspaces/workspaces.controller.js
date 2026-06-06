@@ -58,6 +58,16 @@ export const revokeInvite = async (req, res) => {
   res.status(204).end();
 };
 
+export const updateMemberRole = async (req, res) => {
+  const role = req.body?.role;
+  res.json(await service.updateMemberRole(req.user.id, req.params.id, req.params.userId, role));
+};
+
+export const removeMember = async (req, res) => {
+  await service.removeMember(req.user.id, req.params.id, req.params.userId);
+  res.status(204).end();
+};
+
 export const getInvite = async (req, res) => {
   res.json(await service.getInvite(req.params.token));
 };

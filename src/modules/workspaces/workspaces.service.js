@@ -237,6 +237,35 @@ export async function addMember(userId, workspaceId, input) {
   return { userId: target.id, email: target.email, name: target.name, role: input.role };
 }
 
+// Change a member's workspace role (ws_admin+). Owner role is immutable here.
+export async function updateMemberRole(actorId, workspaceId, targetUserId, role) {
+  await assertWorkspaceAccess(actorId, workspaceId, "ws_admin");
+  const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { ownerId: true } });
+  if (!ws) throw NotFound("Workspace not found");
+  if (ws.ownerId === targetUserId) throw BadRequest("Cannot change the owner's role", "OWNER_IMMUTABLE");
+  const roleId = await roleIdByKey(role);
+  await prisma.$transaction([
+    prisma.userRole.deleteMany({
+      where: { userId: targetUserId, tenantId: workspaceId, role: { key: { in: Object.keys(WS_ROLE_RANK) } } },
+    }),
+    prisma.userRole.create({ data: { userId: targetUserId, roleId, tenantId: workspaceId, grantedBy: actorId } }),
+  ]);
+  await invalidateUserPerms(targetUserId);
+  return { userId: targetUserId, role };
+}
+
+// Remove a member (revoke all ws roles in this workspace). Owner cannot be removed.
+export async function removeMember(actorId, workspaceId, targetUserId) {
+  await assertWorkspaceAccess(actorId, workspaceId, "ws_admin");
+  const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { ownerId: true } });
+  if (!ws) throw NotFound("Workspace not found");
+  if (ws.ownerId === targetUserId) throw BadRequest("Cannot remove the owner", "OWNER_IMMUTABLE");
+  await prisma.userRole.deleteMany({
+    where: { userId: targetUserId, tenantId: workspaceId, role: { key: { in: Object.keys(WS_ROLE_RANK) } } },
+  });
+  await invalidateUserPerms(targetUserId);
+}
+
 /* --------------------------------------------------------- Invite links */
 
 const INVITE_ROLES = ["ws_guest", "ws_member", "ws_admin"];

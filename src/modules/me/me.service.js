@@ -10,6 +10,7 @@ const USER_SELECT = {
   email: true,
   name: true,
   avatarUrl: true,
+  bio: true,
   isActive: true,
   settings: true,
   createdAt: true,
@@ -21,7 +22,17 @@ export async function updateProfile(userId, input) {
   const data = {};
   if (input.name !== undefined) data.name = input.name;
   if (input.avatarUrl !== undefined) data.avatarUrl = input.avatarUrl;
+  if (input.bio !== undefined) data.bio = input.bio;
   return prisma.user.update({ where: { id: userId }, data, select: USER_SELECT });
+}
+
+// Public profile for any user (authenticated viewer). Light, safe fields only.
+export async function getPublicProfile(userId) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, avatarUrl: true, bio: true, createdAt: true, isActive: true },
+  });
+  return user;
 }
 
 export async function createAvatarUpload(userId, { filename, contentType }) {
