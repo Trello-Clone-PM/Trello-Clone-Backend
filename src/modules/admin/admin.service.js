@@ -20,18 +20,79 @@ import { getOnlineCount } from "../../realtime/index.js";
 const BCRYPT_ROUNDS = 10;
 
 export async function getStats() {
-  const [total, active, workspaces, boards, storage] = await Promise.all([
+  const now = new Date();
+  const d7 = new Date(now.getTime() - 7 * 86400 * 1000);
+  const d30 = new Date(now.getTime() - 30 * 86400 * 1000);
+
+  const [
+    total, active, workspaces, boards, lists, cards, comments, attachments, storage,
+    newUsers7d, newUsers30d, newBoards7d, newCards7d,
+    recentSignups, topWsRaw, roleRows, recentUsers7,
+  ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { isActive: true } }),
     prisma.workspace.count(),
     prisma.board.count(),
+    prisma.list.count(),
+    prisma.card.count(),
+    prisma.comment.count(),
+    prisma.attachment.count(),
     prisma.attachment.aggregate({ _sum: { size: true } }),
+    prisma.user.count({ where: { createdAt: { gte: d7 } } }),
+    prisma.user.count({ where: { createdAt: { gte: d30 } } }),
+    prisma.board.count({ where: { createdAt: { gte: d7 } } }),
+    prisma.card.count({ where: { createdAt: { gte: d7 } } }),
+    prisma.user.findMany({ orderBy: { createdAt: "desc" }, take: 6, select: { id: true, name: true, email: true, avatarUrl: true, isActive: true, createdAt: true } }),
+    prisma.board.groupBy({ by: ["workspaceId"], _count: { _all: true }, orderBy: { _count: { workspaceId: "desc" } }, take: 5 }),
+    prisma.userRole.groupBy({ by: ["roleId"], where: { tenantId: null }, _count: { _all: true } }),
+    prisma.user.findMany({ where: { createdAt: { gte: d7 } }, select: { createdAt: true } }),
   ]);
+
+  // top workspaces -> names
+  const topWs = [];
+  if (topWsRaw.length) {
+    const names = await prisma.workspace.findMany({
+      where: { id: { in: topWsRaw.map((t) => t.workspaceId) } },
+      select: { id: true, name: true },
+    });
+    const nameById = new Map(names.map((n) => [n.id, n.name]));
+    for (const t of topWsRaw) topWs.push({ id: t.workspaceId, name: nameById.get(t.workspaceId) ?? "—", boards: t._count._all });
+  }
+
+  // role distribution (system roles, tenantId null)
+  const roleDist = [];
+  if (roleRows.length) {
+    const roles = await prisma.role.findMany({ where: { id: { in: roleRows.map((r) => r.roleId) } }, select: { id: true, key: true } });
+    const keyById = new Map(roles.map((r) => [r.id, r.key]));
+    for (const r of roleRows) roleDist.push({ role: keyById.get(r.roleId) ?? "?", count: r._count._all });
+    roleDist.sort((a, b) => b.count - a.count);
+  }
+
+  // signup trend last 7 days (oldest -> newest)
+  const trend = [];
+  for (let i = 6; i >= 0; i--) {
+    const day = new Date(now.getTime() - i * 86400 * 1000);
+    const label = `${day.getMonth() + 1}/${day.getDate()}`;
+    const count = recentUsers7.filter((u) => {
+      const c = new Date(u.createdAt);
+      return c.getFullYear() === day.getFullYear() && c.getMonth() === day.getMonth() && c.getDate() === day.getDate();
+    }).length;
+    trend.push({ label, value: count });
+  }
+
   return {
-    users: { total, active, suspended: total - active },
+    users: { total, active, suspended: total - active, new7d: newUsers7d, new30d: newUsers30d },
     workspaces: { total: workspaces },
-    boards: { total: boards },
+    boards: { total: boards, new7d: newBoards7d },
+    lists: { total: lists },
+    cards: { total: cards, new7d: newCards7d },
+    comments: { total: comments },
+    attachments: { total: attachments },
     storage: { bytes: storage._sum.size ?? 0 },
+    recentSignups,
+    topWorkspaces: topWs,
+    roleDistribution: roleDist,
+    signupTrend: trend,
   };
 }
 

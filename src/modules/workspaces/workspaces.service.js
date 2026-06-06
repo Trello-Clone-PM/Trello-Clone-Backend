@@ -61,7 +61,7 @@ export async function listWorkspaces(userId) {
   const now = new Date();
   const owned = await prisma.workspace.findMany({
     where: { ownerId: userId },
-    select: { id: true, name: true, visibility: true, ownerId: true, createdAt: true },
+    select: { id: true, name: true, visibility: true, ownerId: true, logoUrl: true, createdAt: true },
   });
   const memberRoles = await prisma.userRole.findMany({
     where: {
@@ -78,7 +78,7 @@ export async function listWorkspaces(userId) {
   const memberWs = memberWsIds.length
     ? await prisma.workspace.findMany({
         where: { id: { in: memberWsIds } },
-        select: { id: true, name: true, visibility: true, ownerId: true, createdAt: true },
+        select: { id: true, name: true, visibility: true, ownerId: true, logoUrl: true, createdAt: true },
       })
     : [];
 
@@ -107,6 +107,7 @@ export async function listWorkspaces(userId) {
     name: w.name,
     visibility: w.visibility,
     ownerId: w.ownerId,
+    logoUrl: w.logoUrl ?? null,
     role: w.role,
     boardCount: countByWs.get(w.id) ?? 0,
     createdAt: w.createdAt,
