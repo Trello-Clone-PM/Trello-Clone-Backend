@@ -119,6 +119,125 @@ export async function createBoard(userId, input) {
   });
 }
 
+// Deep clone a board into the same workspace.
+// Copies labels, lists, cards, card<->label links, checklists + items.
+// Does NOT copy comments, attachments, members, activity.
+export async function copyBoard(userId, boardId, name) {
+  const { board: src } = await assertBoardAccess(userId, boardId, "ws_member");
+
+  const full = await prisma.board.findUnique({
+    where: { id: boardId },
+    select: {
+      name: true,
+      description: true,
+      background: true,
+      visibility: true,
+      labels: { select: { id: true, name: true, color: true } },
+      lists: {
+        orderBy: { position: "asc" },
+        select: {
+          name: true,
+          position: true,
+          archived: true,
+          cards: {
+            orderBy: { position: "asc" },
+            select: {
+              title: true,
+              description: true,
+              position: true,
+              dueDate: true,
+              startDate: true,
+              coverUrl: true,
+              archived: true,
+              cardLabels: { select: { labelId: true } },
+              checklists: {
+                orderBy: { position: "asc" },
+                select: {
+                  title: true,
+                  position: true,
+                  items: {
+                    orderBy: { position: "asc" },
+                    select: { text: true, done: true, position: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!full) throw NotFound("Board not found");
+
+  return prisma.$transaction(async (tx) => {
+    const newBoard = await tx.board.create({
+      data: {
+        workspaceId: src.workspaceId,
+        name: name?.trim() || `${full.name} (copy)`,
+        description: full.description,
+        background: full.background,
+        visibility: full.visibility,
+      },
+      select: {
+        id: true, workspaceId: true, name: true, description: true,
+        background: true, visibility: true, archived: true, createdAt: true,
+      },
+    });
+
+    const labelMap = new Map();
+    for (const lb of full.labels) {
+      const created = await tx.label.create({
+        data: { boardId: newBoard.id, name: lb.name, color: lb.color },
+        select: { id: true },
+      });
+      labelMap.set(lb.id, created.id);
+    }
+
+    for (const list of full.lists) {
+      const newList = await tx.list.create({
+        data: {
+          boardId: newBoard.id,
+          name: list.name,
+          position: list.position,
+          archived: list.archived,
+        },
+        select: { id: true },
+      });
+      for (const card of list.cards) {
+        await tx.card.create({
+          data: {
+            listId: newList.id,
+            title: card.title,
+            description: card.description,
+            position: card.position,
+            dueDate: card.dueDate,
+            startDate: card.startDate,
+            coverUrl: card.coverUrl,
+            archived: card.archived,
+            cardLabels: {
+              create: card.cardLabels
+                .filter((cl) => labelMap.has(cl.labelId))
+                .map((cl) => ({ labelId: labelMap.get(cl.labelId) })),
+            },
+            checklists: {
+              create: card.checklists.map((cl) => ({
+                title: cl.title,
+                position: cl.position,
+                items: {
+                  create: cl.items.map((it) => ({
+                    text: it.text, done: it.done, position: it.position,
+                  })),
+                },
+              })),
+            },
+          },
+        });
+      }
+    }
+    return newBoard;
+  });
+}
+
 export async function updateBoard(userId, boardId, input) {
   await assertBoardAccess(userId, boardId, "ws_member");
   return prisma.board.update({

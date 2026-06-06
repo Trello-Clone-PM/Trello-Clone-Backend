@@ -30,6 +30,11 @@ export const remove = async (req, res) => {
   res.status(204).end();
 };
 
+export const copy = async (req, res) => {
+  const name = typeof req.body?.name === "string" ? req.body.name : undefined;
+  res.status(201).json(await service.copyBoard(req.user.id, req.params.id, name));
+};
+
 export const star = async (req, res) => {
   const { starred } = starBoardSchema.parse(req.body);
   res.json(await service.setBoardStar(req.user.id, req.params.id, starred));

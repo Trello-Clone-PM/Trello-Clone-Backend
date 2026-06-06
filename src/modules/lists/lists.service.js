@@ -60,6 +60,97 @@ export async function deleteList(userId, listId) {
   emitToBoard(existing.boardId, "list:deleted", { id: listId });
 }
 
+// Copy a list (and its cards) into the same board.
+export async function copyList(userId, listId) {
+  const existing = await loadList(listId);
+  await assertBoardAccess(userId, existing.boardId, "ws_member");
+
+  const src = await prisma.list.findUnique({
+    where: { id: listId },
+    select: {
+      name: true,
+      cards: {
+        where: { archived: false },
+        orderBy: { position: "asc" },
+        select: {
+          title: true,
+          description: true,
+          position: true,
+          dueDate: true,
+          startDate: true,
+          coverUrl: true,
+          cardLabels: { select: { labelId: true } },
+          checklists: {
+            orderBy: { position: "asc" },
+            select: {
+              title: true,
+              position: true,
+              items: {
+                orderBy: { position: "asc" },
+                select: { text: true, done: true, position: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const max = await prisma.list.aggregate({
+    where: { boardId: existing.boardId },
+    _max: { position: true },
+  });
+
+  const list = await prisma.$transaction(async (tx) => {
+    const newList = await tx.list.create({
+      data: {
+        boardId: existing.boardId,
+        name: `${src.name} (copy)`,
+        position: endPosition(max._max.position),
+      },
+      select: LIST_SELECT,
+    });
+    for (const card of src.cards) {
+      await tx.card.create({
+        data: {
+          listId: newList.id,
+          title: card.title,
+          description: card.description,
+          position: card.position,
+          dueDate: card.dueDate,
+          startDate: card.startDate,
+          coverUrl: card.coverUrl,
+          cardLabels: { create: card.cardLabels.map((cl) => ({ labelId: cl.labelId })) },
+          checklists: {
+            create: card.checklists.map((cl) => ({
+              title: cl.title,
+              position: cl.position,
+              items: {
+                create: cl.items.map((it) => ({ text: it.text, done: it.done, position: it.position })),
+              },
+            })),
+          },
+        },
+      });
+    }
+    return newList;
+  });
+
+  emitToBoard(list.boardId, "list:created", list);
+  return list;
+}
+
+export async function archiveListCards(userId, listId) {
+  const existing = await loadList(listId);
+  await assertBoardAccess(userId, existing.boardId, "ws_member");
+  const result = await prisma.card.updateMany({
+    where: { listId, archived: false },
+    data: { archived: true },
+  });
+  emitToBoard(existing.boardId, "list:cards_archived", { listId });
+  return { listId, archived: result.count };
+}
+
 const SORT_CMP = {
   name: (a, b) => a.title.localeCompare(b.title),
   due: (a, b) =>

@@ -14,6 +14,7 @@ boardsRouter.post("/", ah(c.create));
 boardsRouter.get("/:id", ah(c.get));
 boardsRouter.patch("/:id", ah(c.update));
 boardsRouter.delete("/:id", ah(c.remove));
+boardsRouter.post("/:id/copy", ah(c.copy));
 boardsRouter.put("/:id/star", ah(c.star));
 
 boardsRouter.get("/:id/members", ah(c.listMembers));

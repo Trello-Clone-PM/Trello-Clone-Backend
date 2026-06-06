@@ -31,3 +31,11 @@ export const sort = async (req, res) => {
   const { by } = sortListSchema.parse(req.body);
   res.json(await service.sortListCards(req.user.id, req.params.id, by));
 };
+
+export const copy = async (req, res) => {
+  res.status(201).json(await service.copyList(req.user.id, req.params.id));
+};
+
+export const archiveCards = async (req, res) => {
+  res.json(await service.archiveListCards(req.user.id, req.params.id));
+};
