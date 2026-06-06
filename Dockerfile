@@ -12,5 +12,8 @@ RUN npx prisma generate
 
 COPY src ./src
 
+# Run as the non-root 'node' user (uid 1000) shipped in the base image.
+USER node
+
 EXPOSE 4000
 CMD ["node", "src/index.js"]
