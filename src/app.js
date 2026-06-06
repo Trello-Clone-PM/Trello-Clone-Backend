@@ -23,6 +23,7 @@ import { attachmentsRouter } from "./modules/attachments/attachments.routes.js";
 import { searchRouter } from "./modules/search/search.routes.js";
 import { customFieldsRouter } from "./modules/customFields/customFields.routes.js";
 import { landingPublicRouter } from "./modules/landing/landing.public.routes.js";
+import { backupRouter, backupPublicRouter } from "./modules/backup/backup.routes.js";
 
 export function createApp() {
   const app = express();
@@ -46,6 +47,7 @@ export function createApp() {
   });
 
   app.use("/api/landing", landingPublicRouter);
+  app.use("/api/backup", backupPublicRouter);
   app.use("/api/auth", authRouter);
   app.use("/api", usersRouter);
   app.use("/api/me", meRouter);
@@ -61,6 +63,7 @@ export function createApp() {
   app.use("/api/custom-fields", customFieldsRouter);
   app.use("/api/attachments", attachmentsRouter);
   app.use("/api/search", searchRouter);
+  app.use("/api/admin/backup", backupRouter);
   app.use("/api/admin", adminRouter);
 
   app.use(notFoundHandler);

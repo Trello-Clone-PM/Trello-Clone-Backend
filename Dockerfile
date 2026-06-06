@@ -2,7 +2,8 @@ FROM node:20-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 
-RUN apk add --no-cache openssl
+# openssl: prisma. postgresql-client: pg_dump for backups. tar/gzip: backup archives.
+RUN apk add --no-cache openssl postgresql16-client tar gzip
 
 COPY package*.json ./
 RUN npm ci --omit=dev

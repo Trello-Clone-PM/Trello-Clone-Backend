@@ -422,6 +422,25 @@ model Setting {
   @@map("settings")
 }
 
+model BackupRun {
+  id           String    @id @default(uuid()) @db.Uuid
+  kind         String // manual | scheduled
+  status       String // pending | running | success | failed
+  scopeDb      Boolean   @default(false) @map("scope_db")
+  scopeUploads Boolean   @default(false) @map("scope_uploads")
+  scopeConfigs Boolean   @default(false) @map("scope_configs")
+  startedAt    DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt   DateTime? @map("finished_at") @db.Timestamptz(6)
+  sizeBytes    Float     @default(0) @map("size_bytes")
+  remotePath   String    @default("") @map("remote_path")
+  error        String    @default("")
+  logTail      String    @default("") @map("log_tail")
+  triggeredBy  String?   @map("triggered_by") @db.Uuid
+
+  @@index([startedAt])
+  @@map("backup_runs")
+}
+
 model Notification {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
