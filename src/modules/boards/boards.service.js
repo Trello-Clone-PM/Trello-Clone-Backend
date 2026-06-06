@@ -190,7 +190,7 @@ export async function getBoardDetail(userId, boardId) {
               members: {
                 select: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } },
               },
-              _count: { select: { comments: true } },
+              _count: { select: { comments: true, attachments: true } },
               checklists: { select: { items: { select: { done: true } } } },
             },
           },
@@ -229,7 +229,9 @@ export async function getBoardDetail(userId, boardId) {
         labels: card.cardLabels.map((cl) => cl.label),
         members: card.members.map((m) => m.user),
         commentCount: card._count.comments,
+        attachmentCount: card._count.attachments,
         checklistSummary: { done, total },
+        checklist: { done, total },
       };
     }),
   }));
