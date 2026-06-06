@@ -19,7 +19,7 @@ function hashToken(raw) {
 }
 
 // Issues a new access JWT + a new refresh token row. Returns the raw refresh secret.
-async function issueTokens(userId, tokenVersion) {
+async function issueTokens(userId, tokenVersion, ctx = {}) {
   const accessJti = uuidv4();
   const accessToken = signAccessToken({
     user_id: userId,
@@ -37,10 +37,12 @@ async function issueTokens(userId, tokenVersion) {
       tokenHash: hashToken(refreshRaw),
       expiresAt: new Date(Date.now() + refreshTtlMs),
       used: false,
+      userAgent: ctx.userAgent ? ctx.userAgent.slice(0, 400) : null,
+      ipAddress: ctx.ipAddress ?? null,
     },
   });
 
-  return { accessToken, refreshToken: refreshRaw, refreshMaxAgeMs: refreshTtlMs };
+  return { accessToken, refreshToken: refreshRaw, refreshMaxAgeMs: refreshTtlMs, refreshJti };
 }
 
 export async function register(email, plainPassword, name) {
@@ -98,7 +100,7 @@ export async function setupSuperAdmin(email, plainPassword, name, ip) {
   return { userId: user.id, tokens };
 }
 
-export async function login(email, plainPassword, ip) {
+export async function login(email, plainPassword, ip, ctx = {}) {
   const user = await prisma.user.findUnique({ where: { email } });
   const ok = user && (await bcrypt.compare(plainPassword, user.passwordHash));
   if (!user || !ok) {
@@ -113,12 +115,12 @@ export async function login(email, plainPassword, ip) {
   if (!user.isActive) throw Unauthorized("USER_INACTIVE", "Account is disabled");
 
   logAudit({ actorId: user.id, action: "auth.login.success", ipAddress: ip });
-  const tokens = await issueTokens(user.id, user.tokenVersion);
+  const tokens = await issueTokens(user.id, user.tokenVersion, { ipAddress: ip, userAgent: ctx.userAgent });
   return { userId: user.id, tokens };
 }
 
 // Rotate refresh token. Detects reuse of an already-used token => revoke everything.
-export async function renew(rawRefresh) {
+export async function renew(rawRefresh, ctx = {}) {
   if (!rawRefresh) throw Unauthorized("NO_REFRESH", "Missing refresh token");
 
   const tokenHash = hashToken(rawRefresh);
@@ -145,8 +147,33 @@ export async function renew(rawRefresh) {
   if (!user || !user.isActive) throw Unauthorized("USER_INACTIVE", "User not active");
 
   await prisma.refreshToken.update({ where: { id: record.id }, data: { used: true } });
-  const tokens = await issueTokens(user.id, user.tokenVersion);
+  const tokens = await issueTokens(user.id, user.tokenVersion, { ipAddress: ctx.ipAddress, userAgent: ctx.userAgent });
   return { userId: user.id, tokens };
+}
+
+/* --------------------------------------------------------- Sessions */
+
+// Active sessions = non-expired, unused refresh tokens. currentJti marks "this device".
+export async function listSessions(userId, currentRefreshRaw) {
+  const currentHash = currentRefreshRaw ? hashToken(currentRefreshRaw) : null;
+  const rows = await prisma.refreshToken.findMany({
+    where: { userId, used: false, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, userAgent: true, ipAddress: true, createdAt: true, expiresAt: true, tokenHash: true },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    userAgent: r.userAgent,
+    ipAddress: r.ipAddress,
+    createdAt: r.createdAt,
+    expiresAt: r.expiresAt,
+    current: currentHash != null && r.tokenHash === currentHash,
+  }));
+}
+
+// Revoke one session (refresh token row) belonging to the user.
+export async function revokeSession(userId, sessionId) {
+  await prisma.refreshToken.deleteMany({ where: { id: sessionId, userId } });
 }
 
 export async function logout(params) {

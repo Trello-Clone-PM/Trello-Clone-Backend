@@ -3,6 +3,8 @@ import {
   createWorkspaceSchema,
   updateWorkspaceSchema,
   addMemberSchema,
+  logoUploadSchema,
+  createInviteSchema,
 } from "./workspaces.schema.js";
 
 export const list = async (req, res) => {
@@ -35,4 +37,31 @@ export const listMembers = async (req, res) => {
 export const addMember = async (req, res) => {
   const input = addMemberSchema.parse(req.body);
   res.status(201).json(await service.addMember(req.user.id, req.params.id, input));
+};
+
+export const logoUpload = async (req, res) => {
+  const input = logoUploadSchema.parse(req.body);
+  res.json(await service.createLogoUpload(req.user.id, req.params.id, input));
+};
+
+export const createInvite = async (req, res) => {
+  const input = createInviteSchema.parse(req.body ?? {});
+  res.status(201).json(await service.createInvite(req.user.id, req.params.id, input));
+};
+
+export const listInvites = async (req, res) => {
+  res.json(await service.listInvites(req.user.id, req.params.id));
+};
+
+export const revokeInvite = async (req, res) => {
+  await service.revokeInvite(req.user.id, req.params.id, req.params.token);
+  res.status(204).end();
+};
+
+export const getInvite = async (req, res) => {
+  res.json(await service.getInvite(req.params.token));
+};
+
+export const acceptInvite = async (req, res) => {
+  res.json(await service.acceptInvite(req.user.id, req.params.token));
 };

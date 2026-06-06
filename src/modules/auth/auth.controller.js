@@ -23,7 +23,7 @@ export const registerHandler = async (req, res) => {
 
 export const loginHandler = async (req, res) => {
   const input = loginSchema.parse(req.body);
-  const { tokens } = await service.login(input.email, input.password, req.ip);
+  const { tokens } = await service.login(input.email, input.password, req.ip, { userAgent: req.headers["user-agent"] });
   setRefreshCookie(res, tokens.refreshToken, tokens.refreshMaxAgeMs);
   res.json({ accessToken: tokens.accessToken });
 };
@@ -41,7 +41,7 @@ export const setupHandler = async (req, res) => {
 
 export const renewHandler = async (req, res) => {
   const raw = req.cookies?.[REFRESH_COOKIE_NAME];
-  const { tokens } = await service.renew(raw);
+  const { tokens } = await service.renew(raw, { ipAddress: req.ip, userAgent: req.headers["user-agent"] });
   setRefreshCookie(res, tokens.refreshToken, tokens.refreshMaxAgeMs);
   res.json({ accessToken: tokens.accessToken });
 };

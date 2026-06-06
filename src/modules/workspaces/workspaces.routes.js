@@ -14,3 +14,12 @@ workspacesRouter.patch("/:id", ah(c.update));
 workspacesRouter.delete("/:id", ah(c.remove));
 workspacesRouter.get("/:id/members", ah(c.listMembers));
 workspacesRouter.post("/:id/members", ah(c.addMember));
+workspacesRouter.post("/:id/logo", ah(c.logoUpload));
+
+// Invite links
+workspacesRouter.get("/:id/invites", ah(c.listInvites));
+workspacesRouter.post("/:id/invites", ah(c.createInvite));
+workspacesRouter.delete("/:id/invites/:token", ah(c.revokeInvite));
+// Accept / preview by token (any authenticated user)
+workspacesRouter.get("/invites/:token", ah(c.getInvite));
+workspacesRouter.post("/invites/:token/accept", ah(c.acceptInvite));

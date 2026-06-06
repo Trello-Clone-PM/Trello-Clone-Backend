@@ -104,9 +104,10 @@ export async function convertItemToCard(userId, itemId) {
 
   const max = await prisma.card.aggregate({ where: { listId: list.id }, _max: { position: true } });
   const card = await prisma.$transaction(async (tx) => {
+    const seq = await tx.board.update({ where: { id: list.boardId }, data: { cardSeq: { increment: 1 } }, select: { cardSeq: true } });
     const c = await tx.card.create({
-      data: { listId: list.id, title: item.text, position: endPosition(max._max.position) },
-      select: { id: true, listId: true, title: true, description: true, position: true, dueDate: true, startDate: true, coverUrl: true, archived: true, createdAt: true },
+      data: { listId: list.id, title: item.text, position: endPosition(max._max.position), number: seq.cardSeq },
+      select: { id: true, listId: true, number: true, title: true, description: true, position: true, dueDate: true, startDate: true, coverUrl: true, archived: true, createdAt: true },
     });
     await tx.activity.create({ data: { boardId: list.boardId, cardId: c.id, actorId: userId, action: "card.created", metadata: { title: c.title, from: "checklist" } } });
     await tx.checklistItem.delete({ where: { id: itemId } });

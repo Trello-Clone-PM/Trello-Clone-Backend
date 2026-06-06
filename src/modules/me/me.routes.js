@@ -15,3 +15,5 @@ meRouter.post("/change-password", ah(c.changePassword));
 meRouter.get("/settings", ah(c.getSettings));
 meRouter.patch("/settings", ah(c.updateSettings));
 meRouter.get("/dashboard", ah(c.dashboard));
+meRouter.get("/sessions", ah(c.listSessions));
+meRouter.delete("/sessions/:id", ah(c.revokeSession));

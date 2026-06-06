@@ -8,6 +8,7 @@ import { notify } from "../notifications/notifications.service.js";
 const CARD_SELECT = {
   id: true,
   listId: true,
+  number: true,
   title: true,
   description: true,
   position: true,
@@ -102,9 +103,16 @@ export async function createCard(userId, input) {
     position = endPosition(max._max.position);
   }
 
-  const card = await prisma.card.create({
-    data: { listId: input.listId, title: input.title, position },
-    select: CARD_SELECT,
+  const card = await prisma.$transaction(async (tx) => {
+    const seq = await tx.board.update({
+      where: { id: boardId },
+      data: { cardSeq: { increment: 1 } },
+      select: { cardSeq: true },
+    });
+    return tx.card.create({
+      data: { listId: input.listId, title: input.title, position, number: seq.cardSeq },
+      select: CARD_SELECT,
+    });
   });
 
   await prisma.activity.create({

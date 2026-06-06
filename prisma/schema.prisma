@@ -47,6 +47,8 @@ model RefreshToken {
   jti       String   @db.Uuid
   expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
   used      Boolean  @default(false)
+  userAgent String?  @map("user_agent")
+  ipAddress String?  @map("ip_address")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -144,14 +146,30 @@ model Workspace {
   ownerId    String     @map("owner_id") @db.Uuid
   visibility Visibility @default(private)
   isLocked   Boolean    @default(false) @map("is_locked")
+  logoUrl    String?    @map("logo_url")
   createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  owner  User    @relation("WorkspaceOwner", fields: [ownerId], references: [id])
-  boards Board[]
+  owner   User              @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  boards  Board[]
+  invites WorkspaceInvite[]
 
   @@index([ownerId])
   @@map("workspaces")
+}
+
+model WorkspaceInvite {
+  token       String    @id
+  workspaceId String    @map("workspace_id") @db.Uuid
+  role        String    @default("ws_member")
+  createdById String    @map("created_by_id") @db.Uuid
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@map("workspace_invites")
 }
 
 model Board {
@@ -162,6 +180,7 @@ model Board {
   background  String?
   visibility  Visibility @default(workspace)
   archived    Boolean    @default(false)
+  cardSeq     Int        @default(0) @map("card_seq")
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -230,6 +249,7 @@ model List {
 model Card {
   id          String    @id @default(uuid()) @db.Uuid
   listId      String    @map("list_id") @db.Uuid
+  number      Int?
   title       String
   description String?
   position    Float

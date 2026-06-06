@@ -1,7 +1,10 @@
+import crypto from "node:crypto";
+import path from "node:path";
 import { prisma } from "../../config/db.js";
 import { Forbidden, NotFound, BadRequest } from "../../lib/errors.js";
 import { invalidateUserPerms } from "../rbac/perms.js";
 import { notify } from "../notifications/notifications.service.js";
+import { minioPublic, MINIO_BUCKET, publicUrl } from "../../config/minio.js";
 
 // Workspace-scoped role hierarchy. Higher index = more privileged.
 const WS_ROLE_RANK = {
@@ -135,6 +138,7 @@ export async function getWorkspace(userId, workspaceId) {
       name: true,
       visibility: true,
       ownerId: true,
+      logoUrl: true,
       createdAt: true,
       owner: { select: { id: true, name: true, email: true, avatarUrl: true } },
     },
@@ -148,8 +152,17 @@ export async function updateWorkspace(userId, workspaceId, input) {
   return prisma.workspace.update({
     where: { id: workspaceId },
     data: input,
-    select: { id: true, name: true, visibility: true, ownerId: true, createdAt: true },
+    select: { id: true, name: true, visibility: true, ownerId: true, logoUrl: true, createdAt: true },
   });
+}
+
+// Presigned PUT for a workspace logo (ws_admin). Mirrors avatar upload.
+export async function createLogoUpload(userId, workspaceId, { filename, contentType }) {
+  await assertWorkspaceAccess(userId, workspaceId, "ws_admin");
+  const ext = path.extname(filename || "").slice(0, 16);
+  const key = `workspace-logos/${workspaceId}/${crypto.randomUUID()}${ext}`;
+  const uploadUrl = await minioPublic.presignedPutObject(MINIO_BUCKET, key, 5 * 60);
+  return { uploadUrl, key, fileUrl: publicUrl(key), contentType };
 }
 
 export async function deleteWorkspace(userId, workspaceId) {
@@ -221,4 +234,68 @@ export async function addMember(userId, workspaceId, input) {
     }
   }
   return { userId: target.id, email: target.email, name: target.name, role: input.role };
+}
+
+/* --------------------------------------------------------- Invite links */
+
+const INVITE_ROLES = ["ws_guest", "ws_member", "ws_admin"];
+
+export async function createInvite(userId, workspaceId, input) {
+  await assertWorkspaceAccess(userId, workspaceId, "ws_admin");
+  const role = INVITE_ROLES.includes(input?.role) ? input.role : "ws_member";
+  const token = crypto.randomBytes(18).toString("base64url");
+  const expiresAt = input?.expiresInDays
+    ? new Date(Date.now() + input.expiresInDays * 86400 * 1000)
+    : null;
+  const invite = await prisma.workspaceInvite.create({
+    data: { token, workspaceId, role, createdById: userId, expiresAt },
+    select: { token: true, role: true, expiresAt: true, createdAt: true },
+  });
+  return invite;
+}
+
+export async function listInvites(userId, workspaceId) {
+  await assertWorkspaceAccess(userId, workspaceId, "ws_admin");
+  return prisma.workspaceInvite.findMany({
+    where: { workspaceId },
+    orderBy: { createdAt: "desc" },
+    select: { token: true, role: true, expiresAt: true, createdAt: true },
+  });
+}
+
+export async function revokeInvite(userId, workspaceId, token) {
+  await assertWorkspaceAccess(userId, workspaceId, "ws_admin");
+  await prisma.workspaceInvite.deleteMany({ where: { token, workspaceId } });
+}
+
+async function loadValidInvite(token) {
+  const invite = await prisma.workspaceInvite.findUnique({
+    where: { token },
+    select: { token: true, workspaceId: true, role: true, expiresAt: true, workspace: { select: { id: true, name: true } } },
+  });
+  if (!invite) throw NotFound("Invite not found or revoked", "INVITE_INVALID");
+  if (invite.expiresAt && invite.expiresAt < new Date()) throw BadRequest("Invite has expired", "INVITE_EXPIRED");
+  return invite;
+}
+
+// Preview a workspace by invite token (any authenticated user).
+export async function getInvite(token) {
+  const invite = await loadValidInvite(token);
+  return { token: invite.token, role: invite.role, workspace: invite.workspace };
+}
+
+// Current user joins the workspace using the invite.
+export async function acceptInvite(userId, token) {
+  const invite = await loadValidInvite(token);
+  const roleId = await roleIdByKey(invite.role);
+  const existing = await prisma.userRole.findFirst({
+    where: { userId, roleId, tenantId: invite.workspaceId },
+  });
+  if (!existing) {
+    await prisma.userRole.create({
+      data: { userId, roleId, tenantId: invite.workspaceId, grantedBy: invite.workspaceId ? userId : userId },
+    });
+    await invalidateUserPerms(userId);
+  }
+  return { workspaceId: invite.workspaceId, role: invite.role, workspace: invite.workspace };
 }

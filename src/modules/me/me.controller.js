@@ -2,6 +2,7 @@ import * as svc from "./me.service.js";
 import * as auth from "../auth/auth.service.js";
 import { updateProfileSchema, avatarUploadSchema, updateSettingsSchema } from "./me.schema.js";
 import { changePasswordSchema } from "../auth/auth.schema.js";
+import { REFRESH_COOKIE_NAME } from "../auth/tokens.js";
 
 export const updateProfile = async (req, res) => {
   const input = updateProfileSchema.parse(req.body);
@@ -34,5 +35,15 @@ export const dashboard = async (req, res) => {
 
 export const remove = async (req, res) => {
   await svc.deactivateSelf(req.user.id);
+  res.status(204).end();
+};
+
+export const listSessions = async (req, res) => {
+  const raw = req.cookies?.[REFRESH_COOKIE_NAME];
+  res.json(await auth.listSessions(req.user.id, raw));
+};
+
+export const revokeSession = async (req, res) => {
+  await auth.revokeSession(req.user.id, req.params.id);
   res.status(204).end();
 };
