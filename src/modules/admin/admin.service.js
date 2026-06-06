@@ -731,12 +731,40 @@ export async function getHealth() {
     counts = { users, workspaces, boards, cards, comments };
   }
 
+  let queues = [];
+  if (redisUp) {
+    queues = await getQueueCounts().catch(() => []);
+  }
+
   return {
     services: { api: "up", db, redis: redisUp, minio: minioUp },
     counts,
+    queues,
     onlineUsers: getOnlineCount(),
     uptimeSec: Math.floor((Date.now() - startedAt) / 1000),
   };
+}
+
+// BullMQ job counts per queue (waiting/active/completed/failed/delayed).
+async function getQueueCounts() {
+  const { emailQueue } = await import("../../queues/email.queue.js");
+  const { remindersQueue } = await import("../../queues/reminders.js");
+  const { backupQueue } = await import("../../queues/backup.queue.js");
+  const defs = [
+    { name: "email", q: emailQueue },
+    { name: "reminders", q: remindersQueue },
+    { name: "backup", q: backupQueue },
+  ];
+  const out = [];
+  for (const d of defs) {
+    try {
+      const c = await d.q.getJobCounts("waiting", "active", "completed", "failed", "delayed");
+      out.push({ name: d.name, ...c });
+    } catch {
+      out.push({ name: d.name, error: true });
+    }
+  }
+  return out;
 }
 
 // ===== System config =====

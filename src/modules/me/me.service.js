@@ -69,6 +69,8 @@ export async function getDashboard(userId) {
       id: true,
       dueDate: true,
       archived: true,
+      status: true,
+      updatedAt: true,
       list: { select: { board: { select: { id: true, name: true } } } },
     },
   });
@@ -79,6 +81,7 @@ export async function getDashboard(userId) {
   weekEnd.setDate(weekEnd.getDate() + 7);
 
   const bucket = { overdue: 0, today: 0, week: 0, later: 0, none: 0 };
+  const byStatus = { todo: 0, doing: 0, done: 0, blocked: 0, none: 0 };
   const byBoardMap = new Map();
   let assigned = 0;
   let completed = 0;
@@ -86,8 +89,26 @@ export async function getDashboard(userId) {
   let dueToday = 0;
   let dueThisWeek = 0;
 
+  // Velocity: completed cards per week for the last 6 weeks (archived or status=done).
+  const weeks = [];
+  for (let i = 5; i >= 0; i--) {
+    const end = new Date(today); end.setDate(end.getDate() - i * 7);
+    const start = new Date(end); start.setDate(start.getDate() - 7);
+    weeks.push({ start, end, label: `${end.getMonth() + 1}/${end.getDate()}`, value: 0 });
+  }
+  const sixWeeksAgo = weeks[0].start;
+
   for (const c of cards) {
+    const isDone = c.archived || c.status === "done";
+    if (isDone && c.updatedAt) {
+      const u = new Date(c.updatedAt);
+      if (u >= sixWeeksAgo) {
+        const w = weeks.find((wk) => u >= wk.start && u < wk.end);
+        if (w) w.value += 1;
+      }
+    }
     if (c.archived) { completed += 1; continue; }
+    byStatus[c.status && byStatus[c.status] !== undefined ? c.status : "none"] += 1;
     assigned += 1;
     const board = c.list.board;
     byBoardMap.set(board.id, { boardId: board.id, name: board.name, count: (byBoardMap.get(board.id)?.count ?? 0) + 1 });
@@ -104,6 +125,8 @@ export async function getDashboard(userId) {
   return {
     totals: { assigned, completed, overdue, dueToday, dueThisWeek },
     byBucket: bucket,
+    byStatus,
+    velocity: weeks.map((w) => ({ label: w.label, value: w.value })),
     byBoard: [...byBoardMap.values()].sort((a, b) => b.count - a.count),
   };
 }
