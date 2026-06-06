@@ -305,6 +305,7 @@ export async function getBoardDetail(userId, boardId) {
               coverUrl: true,
               archived: true,
               createdAt: true,
+              updatedAt: true,
               cardLabels: { select: { label: { select: { id: true, name: true, color: true } } } },
               members: {
                 select: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } },
