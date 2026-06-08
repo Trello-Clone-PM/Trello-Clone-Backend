@@ -8,6 +8,13 @@ const IMAGE_PUT_EXPIRY = 5 * 60; // seconds
 
 export const LANDING_DEFAULTS = {
   brand: { name: "Trello Clone" },
+  chatbot: {
+    enabled: true,
+    title: "Hỏi đáp nhanh với Trợ lý AI trên Zalo",
+    subtitle: "Quét mã QR để chat với bot — hỏi mọi thông tin về sản phẩm, trả lời tức thì 24/7.",
+    botName: "Bot Code Web Không Khó",
+    qrImage: "",
+  },
   hero: {
     eyebrow: "Project management, reimagined",
     title: "Organize anything, together",
