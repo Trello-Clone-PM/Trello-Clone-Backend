@@ -76,21 +76,33 @@ export async function askDeepseek(question) {
   return data?.choices?.[0]?.message?.content?.trim() || "Xin lỗi, mình chưa trả lời được lúc này.";
 }
 
-// Trích text + chat_id từ payload webhook (Zalo Bot API ~ Telegram-style).
+// Trích event/text/chat_id từ payload webhook.
+// Zalo gửi: { ok, result: { event_name, message: { text, from:{id}, chat:{id} } } }
 function parseUpdate(update) {
-  const msg = update?.message ?? update?.event?.message ?? update;
-  const text = msg?.text ?? msg?.message?.text ?? "";
-  const chatId =
-    msg?.chat?.id ?? msg?.chat_id ?? msg?.from?.id ?? update?.chat_id ?? env.ZALO_CHAT_ID;
-  return { text: typeof text === "string" ? text.trim() : "", chatId: chatId ? String(chatId) : "" };
+  const r = update?.result ?? update ?? {};
+  const msg = r?.message ?? update?.message ?? {};
+  const eventName = r?.event_name ?? update?.event_name ?? "";
+  const text = msg?.text ?? "";
+  const chatId = msg?.chat?.id ?? msg?.from?.id ?? msg?.chat_id ?? env.ZALO_CHAT_ID;
+  return {
+    eventName,
+    text: typeof text === "string" ? text.trim() : "",
+    chatId: chatId ? String(chatId) : "",
+  };
 }
 
 // Xử lý 1 update: hỏi DeepSeek rồi gửi trả lời về Zalo. Không ném lỗi ra ngoài.
 export async function handleUpdate(update) {
   try {
-    const { text, chatId } = parseUpdate(update);
-    console.log(`[zalo] parsed text="${text.slice(0, 60)}" chatId="${chatId}"`);
-    if (!text || !chatId) return;
+    const { eventName, text, chatId } = parseUpdate(update);
+    console.log(`[zalo] event="${eventName}" text="${text.slice(0, 60)}" chatId="${chatId}"`);
+    if (!chatId) return;
+    if (!text) {
+      if (eventName === "message.unsupported.received") {
+        await sendMessage(chatId, "Mình chỉ trả lời tin nhắn văn bản thôi nhé. Bạn gõ câu hỏi giúp mình.");
+      }
+      return;
+    }
     if (text.startsWith("/start")) {
       await sendMessage(chatId, "Xin chào! Mình là trợ lý dự án Trello Clone. Hỏi mình bất cứ điều gì về dự án nhé.");
       return;
