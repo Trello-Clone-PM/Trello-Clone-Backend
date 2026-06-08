@@ -32,7 +32,7 @@ export async function setWebhook(url) {
   const res = await fetch(zaloUrl("setWebhook"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, secret_token: env.ZALO_WEBHOOK_SECRET }),
   });
   return res.json().catch(() => ({}));
 }

@@ -44,6 +44,7 @@ const schema = z.object({
   DEEPSEEK_MODEL: z.string().default("deepseek-chat"),
   ZALO_BOT_TOKEN: z.string().default(""),
   ZALO_CHAT_ID: z.string().default(""),
+  ZALO_WEBHOOK_SECRET: z.string().default("trello-clone-zalo-secret"),
 });
 
 const parsed = schema.safeParse(process.env);
