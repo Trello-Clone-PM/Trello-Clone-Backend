@@ -25,6 +25,7 @@ import { customFieldsRouter } from "./modules/customFields/customFields.routes.j
 import { landingPublicRouter } from "./modules/landing/landing.public.routes.js";
 import { backupRouter, backupPublicRouter } from "./modules/backup/backup.routes.js";
 import { reactionsRouter } from "./modules/reactions/reactions.routes.js";
+import { zaloRouter } from "./modules/zalo/zalo.routes.js";
 
 export function createApp() {
   const app = express();
@@ -49,6 +50,7 @@ export function createApp() {
 
   app.use("/api/landing", landingPublicRouter);
   app.use("/api/backup", backupPublicRouter);
+  app.use("/api/zalo", zaloRouter);
   app.use("/api/auth", authRouter);
   app.use("/api", usersRouter);
   app.use("/api/me", meRouter);

@@ -39,6 +39,11 @@ const schema = z.object({
   SMTP_PASS: z.string().default(""),
   SMTP_FROM: z.string().default("Trello Clone <no-reply@trello.local>"),
   ENABLE_WORKERS: boolish(true),
+  // Zalo bot + DeepSeek chatbot (set in server .env, never commit)
+  DEEPSEEK_API_KEY: z.string().default(""),
+  DEEPSEEK_MODEL: z.string().default("deepseek-chat"),
+  ZALO_BOT_TOKEN: z.string().default(""),
+  ZALO_CHAT_ID: z.string().default(""),
 });
 
 const parsed = schema.safeParse(process.env);
