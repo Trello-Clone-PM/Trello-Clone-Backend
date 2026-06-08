@@ -28,6 +28,16 @@ export async function sendMessage(chatId, text) {
   return res.json().catch(() => ({}));
 }
 
+export async function sendChatAction(chatId, action = "typing") {
+  if (!env.ZALO_BOT_TOKEN) return {};
+  const res = await fetch(zaloUrl("sendChatAction"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, action }),
+  });
+  return res.json().catch(() => ({}));
+}
+
 export async function setWebhook(url) {
   const res = await fetch(zaloUrl("setWebhook"), {
     method: "POST",
@@ -79,12 +89,15 @@ function parseUpdate(update) {
 export async function handleUpdate(update) {
   try {
     const { text, chatId } = parseUpdate(update);
+    console.log(`[zalo] parsed text="${text.slice(0, 60)}" chatId="${chatId}"`);
     if (!text || !chatId) return;
     if (text.startsWith("/start")) {
       await sendMessage(chatId, "Xin chào! Mình là trợ lý dự án Trello Clone. Hỏi mình bất cứ điều gì về dự án nhé.");
       return;
     }
+    await sendChatAction(chatId, "typing"); // hiển thị "đang soạn tin"
     const answer = await askDeepseek(text);
+    await sendChatAction(chatId, "typing");
     await sendMessage(chatId, answer);
   } catch (e) {
     console.error("zalo handleUpdate error:", e.message);

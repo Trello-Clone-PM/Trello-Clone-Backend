@@ -9,6 +9,7 @@ export const zaloRouter = Router();
 zaloRouter.post(
   "/webhook",
   ah(async (req, res) => {
+    console.log("[zalo] webhook recv:", JSON.stringify(req.body).slice(0, 600));
     res.json({ ok: true });
     setImmediate(() => handleUpdate(req.body));
   }),
