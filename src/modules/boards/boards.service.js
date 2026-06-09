@@ -1,8 +1,20 @@
+import crypto from "node:crypto";
+import path from "node:path";
 import { prisma } from "../../config/db.js";
 import { NotFound } from "../../lib/errors.js";
 import { assertWorkspaceAccess } from "../workspaces/workspaces.service.js";
+import { minioPublic, MINIO_BUCKET, publicUrl } from "../../config/minio.js";
 
 const MEMBER_USER = { id: true, name: true, email: true, avatarUrl: true };
+
+// Presigned PUT for a custom board background image (ws_member). Mirrors logo/avatar.
+export async function createBoardBgUpload(userId, boardId, { filename, contentType }) {
+  await assertBoardAccess(userId, boardId, "ws_member");
+  const ext = path.extname(filename || "").slice(0, 16);
+  const key = `board-bg/${boardId}/${crypto.randomUUID()}${ext}`;
+  const uploadUrl = await minioPublic.presignedPutObject(MINIO_BUCKET, key, 5 * 60);
+  return { uploadUrl, key, fileUrl: publicUrl(key), contentType };
+}
 
 // Board access derives from its workspace membership (MVP rule).
 // Returns { board, role } or throws 404/403.

@@ -14,7 +14,7 @@ export const updateBoardSchema = z
   .object({
     name: z.string().min(1).max(160).optional(),
     description: z.string().max(4096).nullable().optional(),
-    background: z.string().max(512).nullable().optional(),
+    background: z.string().max(2048).nullable().optional(),
     visibility: visibility.optional(),
     archived: z.boolean().optional(),
     isTemplate: z.boolean().optional(),

@@ -41,6 +41,12 @@ export const star = async (req, res) => {
   res.json(await service.setBoardStar(req.user.id, req.params.id, starred));
 };
 
+export const backgroundUpload = async (req, res) => {
+  const { filename, contentType } = req.body ?? {};
+  if (!filename || !contentType) throw BadRequest("filename and contentType required");
+  res.json(await service.createBoardBgUpload(req.user.id, req.params.id, { filename, contentType }));
+};
+
 export const listMembers = async (req, res) => {
   res.json(await service.listBoardMembers(req.user.id, req.params.id));
 };

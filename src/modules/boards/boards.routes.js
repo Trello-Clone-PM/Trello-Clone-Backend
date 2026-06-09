@@ -17,6 +17,7 @@ boardsRouter.patch("/:id", ah(c.update));
 boardsRouter.delete("/:id", ah(c.remove));
 boardsRouter.post("/:id/copy", ah(c.copy));
 boardsRouter.put("/:id/star", ah(c.star));
+boardsRouter.post("/:id/background-image", ah(c.backgroundUpload));
 
 boardsRouter.get("/:id/members", ah(c.listMembers));
 boardsRouter.post("/:id/members", ah(c.addMember));
